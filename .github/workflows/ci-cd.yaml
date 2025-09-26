@@ -20,6 +20,24 @@ jobs:
 			- name: Build project
 			run: npm run build 
 
+  Deploy-Dev:
+    name: Deploy to Vercel (Development)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev'
+    steps:
+      - uses: actions/checkout@v3
+      - name: use Node.js 22
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - name: Install vercel Cli
+        run: npm install --global vercel@latest
+      - name: Pull Vercel Enviromental Variables
+        run: vercel pull --yes --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Trigger Vercel Deployment
+        run: vercel deploy --no-wait --token=${{ secrets.VERCEL_TOKEN }}
+
 	Deploy-Dev:
 		name: Deploy to Vercel (Development)
 		needs: build
@@ -55,3 +73,21 @@ jobs:
         run: vercel pull --yes --token=${{ secrets.VERCEL_TOKEN }}
 			-name: Trigger Vercel Deployment
         run: vercel deploy --prod --no-wait --token=${{ secrets.VERCEL_TOKEN }}
+
+	Deploy-Production:
+		name: Deploy to Vercel (Production)
+		needs: build
+		runs-on: ubuntu-latest
+		if: github.ref == 'refs/heads/main'
+		steps:
+			- uses: actions/checkout@v3
+			- name: use Node.js 22
+				uses: actions/setup-node@v3
+				with:
+					node-version: '22'
+			- name: Install vercel Cli
+				run: npm install --global vercel@latest
+			- name: Pull Vercel Enviromental Variables
+				run: vercel pull --yes --token=${{ secrets.VERCEL_TOKEN }}
+			- name: Trigger Vercel Deployment
+				run: vercel deploy --prod --no-wait --token=${{ secrets.VERCEL_TOKEN }}
