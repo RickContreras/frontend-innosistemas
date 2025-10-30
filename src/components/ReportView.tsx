@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, FileText, Download, Printer, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getProject, getProjects } from '@/utils/mockData';
@@ -20,7 +21,15 @@ export const ReportView = ({ projectId, onBack }: ReportViewProps) => {
   const [selectedDelivery, setSelectedDelivery] = useState<string>('');
   const [reportHtml, setReportHtml] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [reportType, setReportType] = useState<'student' | 'team'>('student');
+  
+  const isProfessor = user?.role === 'profesor';
+  const isStudent = user?.role === 'estudiante';
+  const isAdmin = user?.role === 'admin';
+  
+  // Default report type based on role
+  const [reportType, setReportType] = useState<'student' | 'team'>(
+    isProfessor ? 'team' : 'student'
+  );
 
   useEffect(() => {
     const proj = getProject(projectId);
@@ -31,8 +40,6 @@ export const ReportView = ({ projectId, onBack }: ReportViewProps) => {
       }
     }
   }, [projectId]);
-
-  const isProfessor = user?.role === 'profesor';
 
   const handleGenerateReport = async () => {
     if (!project || !user) return;
@@ -126,26 +133,47 @@ export const ReportView = ({ projectId, onBack }: ReportViewProps) => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Role Information */}
+        {isAdmin && (
+          <Alert className="mb-6 border-warning/50 bg-warning/5">
+            <AlertDescription className="text-warning font-medium">
+              Vista de administrador - Solo puedes visualizar reportes existentes
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Configuration Panel */}
           <Card className="lg:col-span-1 border-0 gradient-card">
             <CardHeader>
               <CardTitle>Configuración</CardTitle>
-              <CardDescription>Selecciona las opciones del reporte</CardDescription>
+              <CardDescription>
+                {isAdmin 
+                  ? 'Vista de reportes del sistema' 
+                  : 'Selecciona las opciones del reporte'
+                }
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Tipo de Reporte</label>
-                <Select value={reportType} onValueChange={(value: 'student' | 'team') => setReportType(value)}>
-                  <SelectTrigger aria-label="Tipo de reporte">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Reporte Estudiantil</SelectItem>
-                    {isProfessor && <SelectItem value="team">Reporte de Equipo</SelectItem>}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isAdmin && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Tipo de Reporte</label>
+                  <Select value={reportType} onValueChange={(value: 'student' | 'team') => setReportType(value)}>
+                    <SelectTrigger aria-label="Tipo de reporte">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Reporte Estudiantil</SelectItem>
+                      {isProfessor && <SelectItem value="team">Reporte de Equipo</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  {isStudent && reportType === 'team' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Solo disponible para profesores
+                    </p>
+                  )}
+                </div>
+              )}
 
               {reportType === 'student' && project.deliveries.length > 0 && (
                 <div>
@@ -165,11 +193,12 @@ export const ReportView = ({ projectId, onBack }: ReportViewProps) => {
                 </div>
               )}
 
-              <Button 
-                onClick={handleGenerateReport} 
-                className="w-full"
-                disabled={isGenerating || (reportType === 'student' && !selectedDelivery)}
-              >
+              {!isAdmin && (
+                <Button 
+                  onClick={handleGenerateReport} 
+                  className="w-full"
+                  disabled={isGenerating || (reportType === 'student' && !selectedDelivery)}
+                >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -181,7 +210,8 @@ export const ReportView = ({ projectId, onBack }: ReportViewProps) => {
                     Generar Reporte
                   </>
                 )}
-              </Button>
+                </Button>
+              )}
 
               {reportHtml && (
                 <div className="space-y-2 pt-4 border-t">

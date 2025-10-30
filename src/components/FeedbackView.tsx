@@ -231,7 +231,11 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
   }
 
   const isProfessor = user?.role === 'profesor';
+  const isStudent = user?.role === 'estudiante';
+  const isAdmin = user?.role === 'admin';
   const canComment = isProfessor;
+  const canReply = isStudent || isProfessor;
+  const isReadOnly = isAdmin;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -257,6 +261,15 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Role Badge */}
+        {isReadOnly && (
+          <Alert className="mb-6 border-warning/50 bg-warning/5">
+            <AlertDescription className="text-warning font-medium">
+              Vista de solo lectura - Los administradores no pueden modificar retroalimentación
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* New Comment Form (Professor only) */}
         {canComment && (
           <Card className="mb-6 border-0 gradient-card">
@@ -388,54 +401,56 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                     </p>
                   )}
 
-                  {/* Reply Form */}
-                  <div className="mt-4 ml-6">
-                    <Textarea
-                      placeholder="Escribe tu respuesta..."
-                      value={replyText[comment.id] || ''}
-                      onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                      className="mb-2"
-                      aria-label="Respuesta al comentario"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        if (editingReply?.commentId === comment.id) {
-                          handleUpdateReply(comment.id, editingReply.replyId);
-                        } else {
-                          handleSendReply(comment.id);
-                        }
-                      }}
-                      disabled={!replyText[comment.id]?.trim()}
-                      aria-label={editingReply?.commentId === comment.id ? 'Actualizar respuesta' : 'Enviar respuesta'}
-                    >
-                      {editingReply?.commentId === comment.id ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Actualizar
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          Responder
-                        </>
-                      )}
-                    </Button>
-                    {editingReply?.commentId === comment.id && (
+                  {/* Reply Form - Only for students and professors */}
+                  {canReply && !isReadOnly && (
+                    <div className="mt-4 ml-6">
+                      <Textarea
+                        placeholder="Escribe tu respuesta..."
+                        value={replyText[comment.id] || ''}
+                        onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                        className="mb-2"
+                        aria-label="Respuesta al comentario"
+                      />
                       <Button
                         size="sm"
-                        variant="ghost"
                         onClick={() => {
-                          setEditingReply(null);
-                          setReplyText(prev => ({ ...prev, [comment.id]: '' }));
+                          if (editingReply?.commentId === comment.id) {
+                            handleUpdateReply(comment.id, editingReply.replyId);
+                          } else {
+                            handleSendReply(comment.id);
+                          }
                         }}
-                        className="ml-2"
+                        disabled={!replyText[comment.id]?.trim()}
+                        aria-label={editingReply?.commentId === comment.id ? 'Actualizar respuesta' : 'Enviar respuesta'}
                       >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Cancelar
+                        {editingReply?.commentId === comment.id ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Actualizar
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Responder
+                          </>
+                        )}
                       </Button>
-                    )}
-                  </div>
+                      {editingReply?.commentId === comment.id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingReply(null);
+                            setReplyText(prev => ({ ...prev, [comment.id]: '' }));
+                          }}
+                          className="ml-2"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Cancelar
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))

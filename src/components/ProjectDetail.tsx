@@ -2,12 +2,14 @@ import { ArrowLeft, BookOpen, Calendar, Users, MessageSquare, FileText, Settings
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
 import { getProject } from '@/utils/mockData';
 import { Project, Delivery } from '@/types';
 import { FeedbackView } from '@/components/FeedbackView';
 import { ReportView } from '@/components/ReportView';
 import { AccessibilityPanel } from '@/components/AccessibilityPanel';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -20,6 +22,11 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
   const [currentView, setCurrentView] = useState<DetailView>('overview');
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string>('');
   const [project, setProject] = useState<Project | null>(null);
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === 'admin';
+  const isProfessor = user?.role === 'profesor';
+  const isStudent = user?.role === 'estudiante';
 
   useEffect(() => {
     const proj = getProject(projectId);
@@ -105,6 +112,15 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Role Badge */}
+        {isAdmin && (
+          <Alert className="border-warning/50 bg-warning/5">
+            <AlertDescription className="text-warning font-medium">
+              Vista de administrador - Solo lectura, no puedes modificar entregas ni retroalimentación
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Description */}
         <Card className="border-0 gradient-card">
           <CardHeader>
@@ -125,18 +141,25 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
         <Card className="border-0 gradient-card">
           <CardHeader>
             <CardTitle>Acciones Rápidas</CardTitle>
-            <CardDescription>Accede a las funcionalidades del proyecto</CardDescription>
+            <CardDescription>
+              {isAdmin 
+                ? 'Funcionalidades disponibles para tu rol' 
+                : 'Accede a las funcionalidades del proyecto'
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => setCurrentView('report')}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Generar Reporte
-              </Button>
+              {!isAdmin && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setCurrentView('report')}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {isProfessor ? 'Generar Reporte de Equipo' : 'Ver mi Reporte'}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="w-full justify-start"
@@ -194,9 +217,10 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
                         setSelectedDeliveryId(delivery.id);
                         setCurrentView('feedback');
                       }}
+                      disabled={isAdmin}
                     >
                       <MessageSquare className="w-4 h-4 mr-2" />
-                      Ver Retroalimentación
+                      {isAdmin ? 'Ver (Solo lectura)' : 'Ver Retroalimentación'}
                     </Button>
                   </div>
                 ))}
