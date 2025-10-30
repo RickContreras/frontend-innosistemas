@@ -3,6 +3,7 @@ import { LoginForm } from '@/components/LoginForm';
 import { Dashboard } from '@/components/Dashboard';
 import { ProjectDetail } from '@/components/ProjectDetail';
 import { useAuth } from '@/hooks/useAuth';
+import { initializeMockData } from '@/utils/mockData';
 
 type Screen = 'login' | 'dashboard' | 'project-detail';
 
@@ -10,6 +11,11 @@ const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedProject, setSelectedProject] = useState<string>('');
   const { isAuthenticated, isLoading, logout } = useAuth();
+
+  useEffect(() => {
+    // Initialize mock data on first load
+    initializeMockData();
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
