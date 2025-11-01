@@ -127,6 +127,26 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* High Contrast Mode */
+  .high-contrast {
+    --foreground: 0 0% 0%;
+    --background: 0 0% 100%;
+    --muted: 0 0% 85%;
+    --muted-foreground: 0 0% 20%;
+    --border: 0 0% 0%;
+  }
+
+  .dark.high-contrast {
+    --foreground: 0 0% 100%;
+    --background: 0 0% 0%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 80%;
+    --border: 0 0% 100%;
   }
 }
 
