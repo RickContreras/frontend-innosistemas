@@ -1,7 +1,7 @@
 // Configuración centralizada usando variables de entorno
 export const config = {
   // API Configuration
-  apiUrl: import.meta.env.VITE_API_URL || 'https://jubilant-pancake-5w5j6ggxrv246jj-8080.app.github.dev',
+  apiUrl: import.meta.env.VITE_API_URL || 'https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev/',
   
   // App Configuration
   appName: import.meta.env.VITE_APP_NAME || 'InnoSistemas',

@@ -49,14 +49,21 @@ export const useAuth = () => {
         const response = await apiService.getCurrentUser();
         
         if (response.data && response.status === 200) {
+          const user = response.data;
+          
+          // 🔍 DEBUG: Ver usuario restaurado
+          console.log('✅ Sesión restaurada - usuario:', user);
+          console.log('✅ Roles restaurados:', user.roles);
+          
           setAuthState({
-            user: response.data,
+            user,
             isAuthenticated: true,
             isLoading: false
           });
           
           // Configurar timeout para el tiempo restante
-          startSessionTimer(expiry - now);
+          const remainingTime = expiry - now;
+          startSessionTimer(remainingTime);
           return;
         }
       }
@@ -103,6 +110,18 @@ export const useAuth = () => {
     if (response.data && response.status === 200) {
       const { token, expiresInMinutes, user } = response.data;
       
+      // 🔍 DEBUG: Ver datos completos del login
+      console.log('✅ Login exitoso - respuesta completa:', response.data);
+      console.log('✅ Usuario:', user);
+      console.log('✅ Roles:', user?.roles);
+      
+      // Validar que user y roles existan
+      if (!user || !user.roles || !Array.isArray(user.roles)) {
+        console.error('❌ Error: datos de usuario inválidos', user);
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { success: false, error: 'Datos de usuario inválidos' };
+      }
+      
       // Guardar token y configurar expiración
       const expiryTime = new Date().getTime() + (expiresInMinutes * 60 * 1000);
       const loginTime = new Date().toISOString();
@@ -118,13 +137,13 @@ export const useAuth = () => {
       });
       
       startSessionTimer(expiresInMinutes * 60 * 1000);
-      console.log('Usuario autenticado exitosamente:', user.username);
+      console.log('✅ Usuario autenticado exitosamente:', user.username, 'con roles:', user.roles);
       
       return { success: true };
     } else {
       setAuthState(prev => ({ ...prev, isLoading: false }));
-      console.warn('Intento de login fallido:', { username, timestamp: new Date().toISOString() });
-      return { success: false, error: response.error || 'Error de autenticación' };
+      console.warn('❌ Intento de login fallido:', { username, error: response.error, timestamp: new Date().toISOString() });
+      return { success: false, error: response.error || 'Credenciales inválidas' };
     }
   };
 
@@ -143,7 +162,11 @@ export const useAuth = () => {
   };
 
   const hasRole = (role: string): boolean => {
-    return authState.user?.roles.includes(role) ?? false;
+    const has = authState.user?.roles?.includes(role) ?? false;
+    if (!authState.user?.roles) {
+      console.warn('⚠️ hasRole llamado pero user.roles es undefined', { role, user: authState.user });
+    }
+    return has;
   };
 
   const hasAnyRole = (roles: string[]): boolean => {
@@ -159,7 +182,7 @@ export const useAuth = () => {
   };
 
   const isAdmin = (): boolean => {
-    return hasAnyRole(['ROLE_STUDENT', 'ROLE_TEACHER']); // Admin tiene ambos roles
+    return hasAnyRole(['ROLE_ADMIN', 'ROLE_TEACHER']); // Admin tiene rol ADMIN o TEACHER
   };
 
   // Función para registrar intentos de acceso (para auditoría)

@@ -1,7 +1,7 @@
 import { config, logger } from '@/config/env';
 
-// En desarrollo, usar el proxy de Vite. En producción, usar la variable de entorno
-const API_BASE_URL = config.isDev ? '' : config.apiUrl;
+// Usar siempre la URL del backend desde la variable de entorno
+const API_BASE_URL = config.apiUrl;
 
 export interface ApiResponse<T> {
   data?: T;

@@ -81,6 +81,12 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [userManagementOpen, setUserManagementOpen] = useState(false);
 
+  // Función para cerrar sesión
+  const handleLogout = async () => {
+    await logout();
+    onLogout();
+  };
+
   // Simulación de autorización por roles (hasta que esté el microservicio de proyectos)
   const hasProjectAccess = (projectId: string): boolean => {
     if (!user) return false;
@@ -103,7 +109,8 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
 
   // Filter projects based on user role
   const visibleProjects = mockProjects.filter(project => {
-    if (user?.role === 'admin') {
+    const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
+    if (isAdmin) {
       return true; // Admin sees all projects (read-only)
     }
     return hasProjectAccess(project.id);
@@ -111,7 +118,7 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
 
   const handleProjectClick = (project: Project) => {
     const hasAccess = hasProjectAccess(project.id);
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
     
     logAccessAttempt(project.id, hasAccess || isAdmin);
     
@@ -124,21 +131,17 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
   };
 
   const getRoleBadgeText = () => {
-    switch (user?.role) {
-      case 'estudiante': return 'Estudiante';
-      case 'profesor': return 'Profesor';
-      case 'admin': return 'Administrador';
-      default: return user?.role;
-    }
+    if (hasRole('ROLE_ADMIN')) return 'Administrador';
+    if (hasRole('ROLE_TEACHER')) return 'Profesor';
+    if (hasRole('ROLE_STUDENT')) return 'Estudiante';
+    return 'Usuario';
   };
 
   const getRoleDescription = () => {
-    switch (user?.role) {
-      case 'estudiante': return 'Puedes ver tus proyectos asignados y recibir retroalimentación';
-      case 'profesor': return 'Puedes enviar retroalimentación y generar reportes de equipo';
-      case 'admin': return 'Vista general de todos los proyectos (solo lectura)';
-      default: return '';
-    }
+    if (hasRole('ROLE_ADMIN')) return 'Vista general de todos los proyectos y gestión de usuarios';
+    if (hasRole('ROLE_TEACHER')) return 'Puedes enviar retroalimentación y generar reportes de equipo';
+    if (hasRole('ROLE_STUDENT')) return 'Puedes ver tus proyectos asignados y recibir retroalimentación';
+    return '';
   };
 
   const getStatusColor = (status: Project['status']) => {
@@ -268,7 +271,7 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Bienvenido, {user?.name}
+                  Bienvenido, {user?.username}
                 </h2>
                 <p className="text-muted-foreground mb-2">
                   {getRoleDescription()}
@@ -279,9 +282,9 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {user?.role === 'admin' 
+              {hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER')
                 ? `Visualizando ${visibleProjects.length} proyecto(s) del sistema`
-                : `Tienes acceso a ${user?.authorizedProjects.length} proyecto(s)`
+                : `Tienes acceso a ${visibleProjects.length} proyecto(s)`
               }
             </p>
           </div>
@@ -298,7 +301,7 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {visibleProjects.map((project, index) => {
               const hasAccess = hasProjectAccess(project.id);
-              const isAdmin = user?.role === 'admin';
+              const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
               
               return (
                 <Card 
