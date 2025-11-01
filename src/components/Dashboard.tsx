@@ -101,12 +101,21 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
     return false;
   };
 
+  // Filter projects based on user role
+  const visibleProjects = mockProjects.filter(project => {
+    if (user?.role === 'admin') {
+      return true; // Admin sees all projects (read-only)
+    }
+    return hasProjectAccess(project.id);
+  });
+
   const handleProjectClick = (project: Project) => {
     const hasAccess = hasProjectAccess(project.id);
+    const isAdmin = user?.role === 'admin';
     
-    logAccessAttempt(project.id, hasAccess);
+    logAccessAttempt(project.id, hasAccess || isAdmin);
     
-    if (hasAccess) {
+    if (hasAccess || isAdmin) {
       setAccessError('');
       onProjectSelect(project.id);
     } else {
@@ -114,13 +123,21 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      onLogout();
-    } catch (error) {
-      console.error('Error durante el logout:', error);
-      onLogout();
+  const getRoleBadgeText = () => {
+    switch (user?.role) {
+      case 'estudiante': return 'Estudiante';
+      case 'profesor': return 'Profesor';
+      case 'admin': return 'Administrador';
+      default: return user?.role;
+    }
+  };
+
+  const getRoleDescription = () => {
+    switch (user?.role) {
+      case 'estudiante': return 'Puedes ver tus proyectos asignados y recibir retroalimentación';
+      case 'profesor': return 'Puedes enviar retroalimentación y generar reportes de equipo';
+      case 'admin': return 'Vista general de todos los proyectos (solo lectura)';
+      default: return '';
     }
   };
 
@@ -248,11 +265,24 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="animate-slide-up">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Bienvenido, {user.username}
-            </h2>
-            <p className="text-muted-foreground">
-              Tienes acceso a {getAuthorizedProjectsCount()} proyecto(s) según tus roles asignados.
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Bienvenido, {user?.name}
+                </h2>
+                <p className="text-muted-foreground mb-2">
+                  {getRoleDescription()}
+                </p>
+              </div>
+              <Badge variant="outline" className="text-sm">
+                {getRoleBadgeText()}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {user?.role === 'admin' 
+                ? `Visualizando ${visibleProjects.length} proyecto(s) del sistema`
+                : `Tienes acceso a ${user?.authorizedProjects.length} proyecto(s)`
+              }
             </p>
           </div>
 
@@ -266,14 +296,15 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
           )}
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mockProjects.map((project, index) => {
+            {visibleProjects.map((project, index) => {
               const hasAccess = hasProjectAccess(project.id);
+              const isAdmin = user?.role === 'admin';
               
               return (
                 <Card 
                   key={project.id}
                   className={`cursor-pointer transition-bounce hover:shadow-elevated border-0 gradient-card animate-scale-in ${
-                    hasAccess 
+                    hasAccess || isAdmin
                       ? 'hover:scale-105' 
                       : 'opacity-60 hover:opacity-80'
                   }`}
@@ -288,7 +319,9 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                           {project.name}
                         </CardTitle>
                       </div>
-                      {hasAccess ? (
+                      {isAdmin ? (
+                        <Badge variant="outline" className="text-xs">Admin</Badge>
+                      ) : hasAccess ? (
                         <ShieldCheck className="w-5 h-5 text-accent flex-shrink-0" />
                       ) : (
                         <ShieldX className="w-5 h-5 text-muted-foreground flex-shrink-0" />
@@ -299,7 +332,11 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                       <Badge className={getStatusColor(project.status)}>
                         {getStatusText(project.status)}
                       </Badge>
-                      {hasAccess && (
+                      {isAdmin ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Solo lectura
+                        </Badge>
+                      ) : hasAccess && (
                         <Badge variant="outline" className="text-xs">
                           Acceso autorizado
                         </Badge>
@@ -325,9 +362,11 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                       </div>
                     </div>
                     
-                    {hasAccess && (
+                    {(hasAccess || isAdmin) && (
                       <div className="flex items-center justify-between pt-2">
-                        <span className="text-sm text-accent font-medium">Acceder al proyecto</span>
+                        <span className="text-sm text-accent font-medium">
+                          {isAdmin ? 'Ver proyecto' : 'Acceder al proyecto'}
+                        </span>
                         <ChevronRight className="w-4 h-4 text-accent" />
                       </div>
                     )}
