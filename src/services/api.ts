@@ -344,6 +344,31 @@ class ApiService {
       };
     }
   }
+
+  async getProjectById(projectId: number): Promise<ApiResponse<ProjectFromAPIType>> {
+    try {
+      logger.debug(`Fetching project ${projectId} from ${PROJECTS_SERVICE_URL}`);
+      
+      const response = await fetch(`${PROJECTS_SERVICE_URL}/api/projects/${projectId}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      const result = await this.handleResponse<ProjectFromAPIType>(response);
+      if (result.data) {
+        logger.info(`Project ${projectId} loaded successfully`);
+      } else {
+        logger.warn('Failed to load project:', result.error);
+      }
+      return result;
+    } catch (error) {
+      logger.error('Error fetching project:', error);
+      return { 
+        error: 'Error de conexión con el servidor de proyectos', 
+        status: 0 
+      };
+    }
+  }
 }
 
 export const apiService = new ApiService();

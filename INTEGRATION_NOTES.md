@@ -31,6 +31,20 @@ Se ha integrado exitosamente el microservicio de proyectos que expone el endpoin
 - ✅ Fallback a datos mock si el API falla
 - ✅ Alerta informativa si hay error de conexión
 
+### 4. ProjectDetail (`src/components/ProjectDetail.tsx`)
+- ✅ Implementada carga de proyecto individual desde el microservicio
+- ✅ Método `getProjectById()` agregado en `api.ts`
+- ✅ Estados de carga y error con fallback a datos mock
+- ✅ Función `transformProject()` local para convertir datos de API
+- ✅ Mejoras en la UI para mostrar información completa del proyecto:
+  - Estado del proyecto (Activo/Completado/Pendiente)
+  - Categoría del proyecto
+  - ID del curso/equipo
+  - Fecha de creación
+- ✅ Compatibilidad con roles usando `hasRole()` del hook `useAuth`
+- ✅ Vista de loading con spinner animado
+- ✅ Manejo robusto de errores con mensajes al usuario
+
 ## Mapeo de Datos
 
 ### StatusId → Status

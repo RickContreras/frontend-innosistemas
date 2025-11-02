@@ -77,8 +77,9 @@ https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
 
 #### Proyectos
 - `GET /api/projects/student/{id}` - Obtener proyectos de un estudiante
+- `GET /api/projects/{id}` - Obtener un proyecto específico por ID
 
-**Response Example**:
+**Response Example (Lista de proyectos)**:
 ```json
 [
   {
@@ -90,6 +91,27 @@ https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
     "courseId": 101
   }
 ]
+```
+
+**Response Example (Proyecto individual)**:
+```json
+{
+  "id": 201,
+  "name": "InnoSistemas Plataforma de Feedback",
+  "description": "Desarrollar la plataforma web para la gestión de proyectos.",
+  "statusId": 1,
+  "createdAt": "2025-11-02T01:32:02.947011Z",
+  "courseId": 101
+}
+```
+
+**Uso en el código**:
+```typescript
+// Listar proyectos de un estudiante
+const projects = await apiService.getProjectsByStudent(studentId);
+
+// Obtener detalle de un proyecto
+const project = await apiService.getProjectById(projectId);
 ```
 
 ---
