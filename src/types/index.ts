@@ -50,6 +50,16 @@ export interface ProjectFromAPI {
   courseId: number;
 }
 
+// Delivery interface from backend API
+export interface DeliveryFromAPI {
+  id: number;
+  title: string;
+  description: string;
+  file_url: string;
+  created_at: string;
+  project_id: number;
+}
+
 export interface Project {
   id: string;
   name: string;

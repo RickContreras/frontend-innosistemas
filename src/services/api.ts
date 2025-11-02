@@ -1,9 +1,10 @@
 import { config, logger } from '@/config/env';
-import type { ProjectFromAPI as ProjectFromAPIType } from '@/types';
+import type { ProjectFromAPI as ProjectFromAPIType, DeliveryFromAPI } from '@/types';
 
 // URLs de los microservicios
 const AUTH_SERVICE_URL = config.services.auth;
 const PROJECTS_SERVICE_URL = config.services.projects;
+const DELIVERIES_SERVICE_URL = config.services.deliveries;
 
 // Legacy - mantener por compatibilidad
 const API_BASE_URL = config.apiUrl;
@@ -365,6 +366,32 @@ class ApiService {
       logger.error('Error fetching project:', error);
       return { 
         error: 'Error de conexión con el servidor de proyectos', 
+        status: 0 
+      };
+    }
+  }
+
+  // Deliveries endpoints
+  async getDeliveriesByProject(projectId: number): Promise<ApiResponse<DeliveryFromAPI[]>> {
+    try {
+      logger.debug(`Fetching deliveries for project ${projectId} from ${DELIVERIES_SERVICE_URL}`);
+      
+      const response = await fetch(`${DELIVERIES_SERVICE_URL}/api/deliveries/project/${projectId}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      const result = await this.handleResponse<DeliveryFromAPI[]>(response);
+      if (result.data) {
+        logger.info(`Deliveries loaded successfully for project ${projectId}:`, result.data.length, 'deliveries');
+      } else {
+        logger.warn('Failed to load deliveries:', result.error);
+      }
+      return result;
+    } catch (error) {
+      logger.error('Error fetching deliveries:', error);
+      return { 
+        error: 'Error de conexión con el servidor de entregas', 
         status: 0 
       };
     }

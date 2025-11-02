@@ -1,11 +1,11 @@
-import { ArrowLeft, BookOpen, Calendar, Users, MessageSquare, FileText, Settings, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, Users, MessageSquare, FileText, Settings, Loader2, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
 import { getProject } from '@/utils/mockData';
-import { Project, Delivery, ProjectFromAPI } from '@/types';
+import { Project, Delivery, ProjectFromAPI, DeliveryFromAPI } from '@/types';
 import { FeedbackView } from '@/components/FeedbackView';
 import { ReportView } from '@/components/ReportView';
 import { AccessibilityPanel } from '@/components/AccessibilityPanel';
@@ -23,8 +23,11 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
   const [currentView, setCurrentView] = useState<DetailView>('overview');
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string>('');
   const [project, setProject] = useState<Project | null>(null);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDeliveries, setLoadingDeliveries] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
   const { user, hasRole } = useAuth();
 
   // Determinar roles usando hasRole
@@ -55,6 +58,18 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
       category,
       teamId: apiProject.courseId.toString(),
       deliveries: []
+    };
+  };
+
+  // Función para transformar DeliveryFromAPI a Delivery
+  const transformDelivery = (apiDelivery: DeliveryFromAPI): Delivery => {
+    return {
+      id: apiDelivery.id.toString(),
+      projectId: apiDelivery.project_id.toString(),
+      title: apiDelivery.title,
+      description: apiDelivery.description,
+      dueDate: apiDelivery.created_at, // Usar created_at como fecha
+      comments: [] // Por ahora vacío, se llenará cuando tengamos el servicio de comentarios
     };
   };
 
@@ -103,6 +118,54 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
 
     loadProject();
   }, [projectId]);
+
+  // Cargar entregas cuando se carga el proyecto
+  useEffect(() => {
+    const loadDeliveries = async () => {
+      if (!project) return;
+
+      try {
+        setLoadingDeliveries(true);
+        setDeliveriesError(null);
+
+        const projectIdNum = parseInt(projectId);
+        
+        if (!isNaN(projectIdNum)) {
+          const response = await apiService.getDeliveriesByProject(projectIdNum);
+          
+          if (response.data && response.data.length > 0) {
+            const transformedDeliveries = response.data.map(transformDelivery);
+            setDeliveries(transformedDeliveries);
+          } else if (response.error) {
+            setDeliveriesError('No se pudieron cargar las entregas desde el servidor');
+            // Usar entregas del proyecto mock si existen
+            if (project.deliveries && project.deliveries.length > 0) {
+              setDeliveries(project.deliveries);
+            }
+          } else {
+            // No hay entregas en el servidor
+            setDeliveries([]);
+          }
+        } else {
+          // Usar deliveries del proyecto mock
+          if (project.deliveries && project.deliveries.length > 0) {
+            setDeliveries(project.deliveries);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading deliveries:', err);
+        setDeliveriesError('Error al cargar las entregas');
+        // Fallback a deliveries del proyecto mock
+        if (project.deliveries && project.deliveries.length > 0) {
+          setDeliveries(project.deliveries);
+        }
+      } finally {
+        setLoadingDeliveries(false);
+      }
+    };
+
+    loadDeliveries();
+  }, [project, projectId]);
 
   if (currentView === 'feedback' && selectedDeliveryId) {
     return (
@@ -317,17 +380,33 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
         </Card>
 
         {/* Deliveries */}
-        {project.deliveries && project.deliveries.length > 0 && (
-          <Card className="border-0 gradient-card">
-            <CardHeader>
-              <CardTitle>Entregas del Proyecto</CardTitle>
-              <CardDescription>
-                {project.deliveries.length} entrega(s) programada(s)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Card className="border-0 gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Entregas del Proyecto</span>
+              {loadingDeliveries && (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </CardTitle>
+            <CardDescription>
+              {deliveries.length > 0 
+                ? `${deliveries.length} entrega(s) registrada(s)` 
+                : 'No hay entregas registradas'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {deliveriesError && (
+              <Alert className="mb-4 border-warning/50 bg-warning/5">
+                <AlertDescription className="text-warning-foreground text-sm">
+                  {deliveriesError}. {deliveries.length > 0 && 'Mostrando información de ejemplo.'}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {deliveries.length > 0 ? (
               <div className="space-y-3">
-                {project.deliveries.map((delivery: Delivery) => (
+                {deliveries.map((delivery: Delivery) => (
                   <div
                     key={delivery.id}
                     className="p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
@@ -348,30 +427,43 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(delivery.dueDate).toLocaleDateString('es-ES')}
+                        {new Date(delivery.dueDate).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </span>
                       <span className="flex items-center gap-1">
                         <MessageSquare className="w-3 h-3" />
                         {delivery.comments.length} comentarios
                       </span>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDeliveryId(delivery.id);
-                        setCurrentView('feedback');
-                      }}
-                      disabled={isAdmin}
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      {isAdmin ? 'Ver (Solo lectura)' : 'Ver Retroalimentación'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDeliveryId(delivery.id);
+                          setCurrentView('feedback');
+                        }}
+                        disabled={isAdmin}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        {isAdmin ? 'Ver (Solo lectura)' : 'Ver Retroalimentación'}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No hay entregas disponibles para este proyecto</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Project Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -387,7 +479,7 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
             <CardContent className="p-6 text-center">
               <FileText className="w-8 h-8 text-accent mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Entregas</p>
-              <p className="text-2xl font-bold text-foreground">{project.deliveries.length}</p>
+              <p className="text-2xl font-bold text-foreground">{deliveries.length}</p>
             </CardContent>
           </Card>
           
@@ -396,7 +488,7 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
               <MessageSquare className="w-8 h-8 text-warning mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Comentarios</p>
               <p className="text-2xl font-bold text-foreground">
-                {project.deliveries.reduce((sum, d) => sum + d.comments.length, 0)}
+                {deliveries.reduce((sum, d) => sum + d.comments.length, 0)}
               </p>
             </CardContent>
           </Card>

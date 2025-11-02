@@ -9,6 +9,7 @@ Este proyecto utiliza variables de entorno para la configuración. Todas las var
 |----------|-------------|-------------------|-----------|
 | `VITE_AUTH_SERVICE_URL` | URL del microservicio de autenticación | `https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev` | ✅ |
 | `VITE_PROJECTS_SERVICE_URL` | URL del microservicio de proyectos | `https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev` | ✅ |
+| `VITE_DELIVERIES_SERVICE_URL` | URL del microservicio de entregas | `https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev` | ✅ |
 | `VITE_API_URL` | ⚠️ **Deprecated** - Usar `VITE_AUTH_SERVICE_URL` | Auto | ❌ |
 
 ### Configuración de la Aplicación
@@ -38,10 +39,13 @@ La aplicación consume múltiples microservicios:
 
 ### Microservicio de Proyectos (`VITE_PROJECTS_SERVICE_URL`)
 - `/api/projects/student/{id}` - Proyectos por estudiante
-- `/api/projects/*` - Otros endpoints de proyectos
+- `/api/projects/{id}` - Detalle de un proyecto
+
+### Microservicio de Entregas (`VITE_DELIVERIES_SERVICE_URL`)
+- `/api/deliveries/project/{id}` - Entregas de un proyecto
 
 ### Manejo de CORS
-En desarrollo, asegúrate de que ambos microservicios tengan CORS habilitado o usa un proxy.
+En desarrollo, asegúrate de que todos los microservicios tengan CORS habilitado o usa un proxy.
 
 ## 📁 Archivos de Configuración
 
@@ -50,6 +54,7 @@ En desarrollo, asegúrate de que ambos microservicios tengan CORS habilitado o u
 # Microservicios
 VITE_AUTH_SERVICE_URL=https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev
 VITE_PROJECTS_SERVICE_URL=https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
+VITE_DELIVERIES_SERVICE_URL=https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev
 
 # Configuración de la aplicación
 VITE_ENABLE_DEVTOOLS=true
@@ -64,6 +69,7 @@ VITE_APP_VERSION=1.0.0
 # Microservicios
 VITE_AUTH_SERVICE_URL=https://auth.innosistemas.com
 VITE_PROJECTS_SERVICE_URL=https://projects.innosistemas.com
+VITE_DELIVERIES_SERVICE_URL=https://deliveries.innosistemas.com
 
 # Configuración de la aplicación
 VITE_ENABLE_DEVTOOLS=false

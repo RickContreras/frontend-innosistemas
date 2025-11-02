@@ -7,25 +7,21 @@ InnoSistemas Frontend consume múltiples microservicios backend independientes, 
 ## 📊 Diagrama de Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  InnoSistemas Frontend                  │
-│                   (React + TypeScript)                  │
-└───────────────────┬─────────────────┬───────────────────┘
-                    │                 │
-        ┌───────────┴────────┐   ┌────┴──────────────┐
-        │                    │   │                   │
-        ▼                    │   ▼                   │
-┌──────────────────┐         │  ┌──────────────────┐│
-│   Auth Service   │         │  │ Projects Service ││
-│   Port: 8080     │         │  │   Port: 8080     ││
-├──────────────────┤         │  ├──────────────────┤│
-│ • /auth/login    │         │  │ • /api/projects  ││
-│ • /auth/logout   │         │  │   /student/{id}  ││
-│ • /auth/me       │         │  └──────────────────┘│
-│ • /api/users/*   │         │                      │
-│ • /api/roles/*   │         │                      │
-│ • /api/health/db │         │                      │
-└──────────────────┘         └──────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                   InnoSistemas Frontend                      │
+│                    (React + TypeScript)                      │
+└───────────┬────────────────┬──────────────┬──────────────────┘
+            │                │              │
+    ┌───────▼──────┐  ┌──────▼─────┐  ┌────▼───────────┐
+    │              │  │            │  │                │
+    │    Auth      │  │  Projects  │  │   Deliveries   │
+    │   Service    │  │  Service   │  │    Service     │
+    │   :8080      │  │   :8080    │  │    :8080       │
+    ├──────────────┤  ├────────────┤  ├────────────────┤
+    │ • /auth/*    │  │ • /api/    │  │ • /api/        │
+    │ • /api/users │  │   projects │  │   deliveries   │
+    │ • /api/roles │  │            │  │                │
+    └──────────────┘  └────────────┘  └────────────────┘
 ```
 
 ## 🎯 Microservicios
@@ -38,6 +34,8 @@ InnoSistemas Frontend consume múltiples microservicios backend independientes, 
 ```
 https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev
 ```
+
+**Variable de Entorno**: `VITE_AUTH_SERVICE_URL`
 
 **Endpoints**:
 
@@ -72,6 +70,8 @@ https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev
 ```
 https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
 ```
+
+**Variable de Entorno**: `VITE_PROJECTS_SERVICE_URL`
 
 **Endpoints**:
 
@@ -116,6 +116,52 @@ const project = await apiService.getProjectById(projectId);
 
 ---
 
+### 3. Servicio de Entregas
+
+**Responsabilidad**: Gestión de entregas de proyectos
+
+**URL de Desarrollo**: 
+```
+https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev
+```
+
+**Variable de Entorno**: `VITE_DELIVERIES_SERVICE_URL`
+
+**Endpoints**:
+
+#### Entregas
+- `GET /api/deliveries/project/{id}` - Obtener entregas de un proyecto
+
+**Response Example**:
+```json
+[
+  {
+    "id": 3,
+    "title": "Entrega Sprint 3",
+    "description": "Tercera entrega - integración de servicios",
+    "file_url": "https://drive.google.com/file/d/ejemplo3",
+    "created_at": "2025-11-02T03:05:10.186269",
+    "project_id": 202
+  },
+  {
+    "id": 4,
+    "title": "Documentación Técnica",
+    "description": "Documentación completa del sistema",
+    "file_url": "https://docs.google.com/document/ejemplo4",
+    "created_at": "2025-11-02T03:05:10.186269",
+    "project_id": 202
+  }
+]
+```
+
+**Uso en el código**:
+```typescript
+// Obtener entregas de un proyecto
+const deliveries = await apiService.getDeliveriesByProject(projectId);
+```
+
+---
+
 ## 🔧 Configuración
 
 ### Variables de Entorno
@@ -139,6 +185,7 @@ export const config = {
   services: {
     auth: import.meta.env.VITE_AUTH_SERVICE_URL,
     projects: import.meta.env.VITE_PROJECTS_SERVICE_URL,
+    deliveries: import.meta.env.VITE_DELIVERIES_SERVICE_URL,
   },
   // ... más configuraciones
 };
@@ -153,6 +200,7 @@ import { config } from '@/config/env';
 
 const AUTH_SERVICE_URL = config.services.auth;
 const PROJECTS_SERVICE_URL = config.services.projects;
+const DELIVERIES_SERVICE_URL = config.services.deliveries;
 
 class ApiService {
   // Métodos para auth service
@@ -161,6 +209,10 @@ class ApiService {
   
   // Métodos para projects service
   async getProjectsByStudent() { /* ... */ }
+  async getProjectById() { /* ... */ }
+  
+  // Métodos para deliveries service
+  async getDeliveriesByProject() { /* ... */ }
 }
 ```
 
