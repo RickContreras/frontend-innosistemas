@@ -396,6 +396,31 @@ class ApiService {
       };
     }
   }
+
+  async getDeliveryById(deliveryId: number): Promise<ApiResponse<DeliveryFromAPI>> {
+    try {
+      logger.debug(`Fetching delivery ${deliveryId} from ${DELIVERIES_SERVICE_URL}`);
+      
+      const response = await fetch(`${DELIVERIES_SERVICE_URL}/api/deliveries/${deliveryId}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      const result = await this.handleResponse<DeliveryFromAPI>(response);
+      if (result.data) {
+        logger.info(`Delivery ${deliveryId} loaded successfully`);
+      } else {
+        logger.warn('Failed to load delivery:', result.error);
+      }
+      return result;
+    } catch (error) {
+      logger.error('Error fetching delivery:', error);
+      return { 
+        error: 'Error de conexión con el servidor de entregas', 
+        status: 0 
+      };
+    }
+  }
 }
 
 export const apiService = new ApiService();

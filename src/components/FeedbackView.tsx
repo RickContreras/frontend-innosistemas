@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Send, MessageSquare, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Send, MessageSquare, Edit2, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
 import { getProject, updateProject } from '@/utils/mockData';
-import { Comment, Reply, Delivery } from '@/types';
+import { Comment, Reply, Delivery, DeliveryFromAPI } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { apiService } from '@/services/api';
 
 interface FeedbackViewProps {
   projectId: string;
@@ -18,21 +19,64 @@ interface FeedbackViewProps {
 }
 
 export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProps) => {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
   const [editingReply, setEditingReply] = useState<{ commentId: string; replyId: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [simulateError, setSimulateError] = useState(false);
 
-  const loadDelivery = useCallback(() => {
-    const project = getProject(projectId);
-    if (project) {
-      const del = project.deliveries.find(d => d.id === deliveryId);
-      if (del) {
-        setDelivery(del);
+  // Transform API delivery to frontend format
+  const transformDelivery = (apiDelivery: DeliveryFromAPI): Delivery => {
+    // Get locally stored comments from localStorage
+    const localCommentsKey = `delivery-comments-${apiDelivery.id}`;
+    const storedComments = localStorage.getItem(localCommentsKey);
+    const comments: Comment[] = storedComments ? JSON.parse(storedComments) : [];
+
+    return {
+      id: apiDelivery.id.toString(),
+      projectId: apiDelivery.project_id.toString(),
+      title: apiDelivery.title,
+      description: apiDelivery.description,
+      dueDate: apiDelivery.created_at,
+      comments: comments
+    };
+  };
+
+  const loadDelivery = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Try to load from API
+      console.log(`[FeedbackView] Loading delivery ${deliveryId} from API`);
+      const response = await apiService.getDeliveryById(parseInt(deliveryId));
+
+      if (response.data) {
+        const transformedDelivery = transformDelivery(response.data);
+        setDelivery(transformedDelivery);
+        console.log('[FeedbackView] Delivery loaded successfully from API:', transformedDelivery);
+      } else {
+        throw new Error(response.error || 'Failed to load delivery');
       }
+    } catch (err) {
+      // Fallback to mock data
+      console.warn('[FeedbackView] Error loading from API, using mock data:', err);
+      const project = getProject(projectId);
+      if (project) {
+        const del = project.deliveries.find(d => d.id === deliveryId);
+        if (del) {
+          setDelivery(del);
+          setError('Usando datos locales - el servidor no está disponible');
+        } else {
+          setError('No se pudo cargar la entrega');
+        }
+      }
+    } finally {
+      setLoading(false);
     }
   }, [projectId, deliveryId]);
 
@@ -71,8 +115,12 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
 
     const comment: Comment = {
       id: `c-${Date.now()}`,
-      authorId: user.id,
-      authorName: user.name,
+      // TODO: Future implementation - use user.id when available
+      // authorId: user.id,
+      authorId: user.username,
+      // TODO: Future implementation - use user.name when available
+      // authorName: user.name,
+      authorName: user.email || user.username,
       body: newComment,
       timestamp: new Date().toISOString(),
       replies: [],
@@ -111,8 +159,12 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
 
     const reply: Reply = {
       id: `r-${Date.now()}`,
-      authorId: user.id,
-      authorName: user.name,
+      // TODO: Future implementation - use user.id when available
+      // authorId: user.id,
+      authorId: user.username,
+      // TODO: Future implementation - use user.name when available
+      // authorName: user.name,
+      authorName: user.email || user.username,
       body: text,
       timestamp: new Date().toISOString()
     };
@@ -222,17 +274,32 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
     }
   };
 
-  if (!delivery) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <p className="text-muted-foreground">Cargando entrega...</p>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
+          <p className="text-muted-foreground">Cargando entrega...</p>
+        </div>
       </div>
     );
   }
 
-  const isProfessor = user?.role === 'profesor';
-  const isStudent = user?.role === 'estudiante';
-  const isAdmin = user?.role === 'admin';
+  if (!delivery) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>
+            {error || 'No se pudo cargar la entrega'}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const isProfessor = hasRole('ROLE_TEACHER');
+  const isStudent = hasRole('ROLE_STUDENT');
+  const isAdmin = hasRole('ROLE_ADMIN');
   const canComment = isProfessor;
   const canReply = isStudent || isProfessor;
   const isReadOnly = isAdmin;
@@ -261,6 +328,15 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Error/Fallback Alert */}
+        {error && (
+          <Alert className="mb-6 border-warning/50 bg-warning/5">
+            <AlertDescription className="text-warning font-medium">
+              ⚠️ {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Role Badge */}
         {isReadOnly && (
           <Alert className="mb-6 border-warning/50 bg-warning/5">
@@ -366,7 +442,9 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                           <p className="text-sm text-foreground">{reply.body}</p>
                           
                           {/* Edit/Delete buttons for own replies */}
-                          {user?.id === reply.authorId && (
+                          {/* TODO: Future implementation - compare with user.id when available */}
+                          {/* {user?.id === reply.authorId && ( */}
+                          {user?.username === reply.authorId && (
                             <div className="flex gap-2 mt-2">
                               <Button
                                 variant="ghost"
