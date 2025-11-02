@@ -1,7 +1,13 @@
 // Configuración centralizada usando variables de entorno
 export const config = {
-  // API Configuration
-  apiUrl: import.meta.env.VITE_API_URL || 'https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev/',
+  // Microservices Configuration
+  services: {
+    auth: import.meta.env.VITE_AUTH_SERVICE_URL || 'https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev',
+    projects: import.meta.env.VITE_PROJECTS_SERVICE_URL || 'https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev',
+  },
+  
+  // Legacy API URL (deprecated - usar services.auth)
+  apiUrl: import.meta.env.VITE_API_URL || import.meta.env.VITE_AUTH_SERVICE_URL || 'https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev',
   
   // App Configuration
   appName: import.meta.env.VITE_APP_NAME || 'InnoSistemas',

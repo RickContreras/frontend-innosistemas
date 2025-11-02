@@ -40,6 +40,16 @@ export interface Delivery {
   comments: Comment[];
 }
 
+// Project interface from backend API
+export interface ProjectFromAPI {
+  id: number;
+  name: string;
+  description: string;
+  statusId: number;
+  createdAt: string;
+  courseId: number;
+}
+
 export interface Project {
   id: string;
   name: string;
