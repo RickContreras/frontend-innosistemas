@@ -4,10 +4,13 @@ Este proyecto utiliza variables de entorno para la configuración. Todas las var
 
 ## 📋 Variables Disponibles
 
-### Configuración de API
+### Configuración de Microservicios
 | Variable | Descripción | Valor por Defecto | Requerida |
 |----------|-------------|-------------------|-----------|
-| `VITE_API_URL` | URL del microservicio de backend | `https://jubilant-pancake-5w5j6ggxrv246jj-8080.app.github.dev` | ✅ |
+| `VITE_AUTH_SERVICE_URL` | URL del microservicio de autenticación | `https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev` | ✅ |
+| `VITE_PROJECTS_SERVICE_URL` | URL del microservicio de proyectos | `https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev` | ✅ |
+| `VITE_DELIVERIES_SERVICE_URL` | URL del microservicio de entregas | `https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev` | ✅ |
+| `VITE_API_URL` | ⚠️ **Deprecated** - Usar `VITE_AUTH_SERVICE_URL` | Auto | ❌ |
 
 ### Configuración de la Aplicación
 | Variable | Descripción | Valor por Defecto | Requerida |
@@ -22,20 +25,38 @@ Este proyecto utiliza variables de entorno para la configuración. Todas las var
 | `VITE_ENABLE_DEVTOOLS` | Habilitar herramientas de dev | `true` | ❌ |
 | `VITE_LOG_LEVEL` | Nivel de logging | `debug` | ❌ |
 
-## 🔄 Proxy de Desarrollo
+## 🔄 Arquitectura de Microservicios
 
-En desarrollo, se usa un proxy de Vite que redirige:
-- `/api/*` → `${VITE_API_URL}/api/*`
-- `/auth/*` → `${VITE_API_URL}/auth/*`
+La aplicación consume múltiples microservicios:
 
-Esto evita problemas de CORS durante el desarrollo.
+### Microservicio de Autenticación (`VITE_AUTH_SERVICE_URL`)
+- `/auth/login` - Autenticación de usuarios
+- `/auth/logout` - Cierre de sesión
+- `/auth/me` - Información del usuario actual
+- `/api/users/*` - Gestión de usuarios
+- `/api/roles/*` - Gestión de roles y permisos
+- `/api/health/db` - Health check
+
+### Microservicio de Proyectos (`VITE_PROJECTS_SERVICE_URL`)
+- `/api/projects/student/{id}` - Proyectos por estudiante
+- `/api/projects/{id}` - Detalle de un proyecto
+
+### Microservicio de Entregas (`VITE_DELIVERIES_SERVICE_URL`)
+- `/api/deliveries/project/{id}` - Entregas de un proyecto
+
+### Manejo de CORS
+En desarrollo, asegúrate de que todos los microservicios tengan CORS habilitado o usa un proxy.
 
 ## 📁 Archivos de Configuración
 
 ### `.env` (Desarrollo local)
 ```bash
-# Variables de entorno para desarrollo
-VITE_API_URL=https://jubilant-pancake-5w5j6ggxrv246jj-8080.app.github.dev
+# Microservicios
+VITE_AUTH_SERVICE_URL=https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev
+VITE_PROJECTS_SERVICE_URL=https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
+VITE_DELIVERIES_SERVICE_URL=https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev
+
+# Configuración de la aplicación
 VITE_ENABLE_DEVTOOLS=true
 VITE_LOG_LEVEL=debug
 VITE_SESSION_TIMEOUT=3600000
@@ -45,7 +66,12 @@ VITE_APP_VERSION=1.0.0
 
 ### `.env.production` (Producción)
 ```bash
-VITE_API_URL=https://api.innosistemas.com
+# Microservicios
+VITE_AUTH_SERVICE_URL=https://auth.innosistemas.com
+VITE_PROJECTS_SERVICE_URL=https://projects.innosistemas.com
+VITE_DELIVERIES_SERVICE_URL=https://deliveries.innosistemas.com
+
+# Configuración de la aplicación
 VITE_ENABLE_DEVTOOLS=false
 VITE_LOG_LEVEL=warn
 VITE_SESSION_TIMEOUT=1800000

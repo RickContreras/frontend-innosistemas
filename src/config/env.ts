@@ -1,7 +1,14 @@
 // Configuración centralizada usando variables de entorno
 export const config = {
-  // API Configuration
-  apiUrl: import.meta.env.VITE_API_URL || 'https://jubilant-pancake-5w5j6ggxrv246jj-8080.app.github.dev',
+  // Microservices Configuration
+  services: {
+    auth: import.meta.env.VITE_AUTH_SERVICE_URL || 'https://studious-waffle-pvv4jv9qqx4f9r-8080.app.github.dev',
+    projects: import.meta.env.VITE_PROJECTS_SERVICE_URL || 'https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev',
+    deliveries: import.meta.env.VITE_DELIVERIES_SERVICE_URL || 'https://humble-sniffle-4445j4696xxc7665-8080.app.github.dev',
+  },
+  
+  // Legacy API URL (deprecated - usar services.auth)
+  apiUrl: import.meta.env.VITE_API_URL || import.meta.env.VITE_AUTH_SERVICE_URL || 'https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev',
   
   // App Configuration
   appName: import.meta.env.VITE_APP_NAME || 'InnoSistemas',

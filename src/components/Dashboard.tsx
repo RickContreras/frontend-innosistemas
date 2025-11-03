@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -23,23 +23,16 @@ import {
   ChevronRight,
   User,
   Settings,
-  UserCog
+  UserCog,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfile } from '@/components/UserProfile';
 import { UserManagement } from '@/components/UserManagement';
+import { apiService } from '@/services/api';
+import type { ProjectFromAPI, Project } from '@/types';
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'completed' | 'pending';
-  participants: number;
-  deadline: string;
-  category: 'investigacion' | 'desarrollo' | 'analisis';
-}
-
-// Mock data para proyectos (se mantendrá hasta que esté el microservicio)
+// Mock data para proyectos (fallback si falla la API)
 const mockProjects: Project[] = [
   {
     id: 'proyecto-a',
@@ -48,7 +41,9 @@ const mockProjects: Project[] = [
     status: 'active',
     participants: 15,
     deadline: '2024-12-15',
-    category: 'investigacion'
+    category: 'investigacion',
+    teamId: '1',
+    deliveries: []
   },
   {
     id: 'proyecto-b',
@@ -57,7 +52,9 @@ const mockProjects: Project[] = [
     status: 'active',
     participants: 8,
     deadline: '2024-11-30',
-    category: 'desarrollo'
+    category: 'desarrollo',
+    teamId: '1',
+    deliveries: []
   },
   {
     id: 'proyecto-c',
@@ -66,7 +63,9 @@ const mockProjects: Project[] = [
     status: 'pending',
     participants: 12,
     deadline: '2025-01-20',
-    category: 'analisis'
+    category: 'analisis',
+    teamId: '1',
+    deliveries: []
   }
 ];
 
@@ -80,33 +79,109 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
   const [accessError, setAccessError] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const [userManagementOpen, setUserManagementOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulación de autorización por roles (hasta que esté el microservicio de proyectos)
+  // Función para transformar ProjectFromAPI a Project
+  const transformProject = (apiProject: ProjectFromAPI): Project => {
+    // Mapear statusId a status
+    const statusMap: { [key: number]: 'active' | 'completed' | 'pending' } = {
+      1: 'active',
+      2: 'completed',
+      3: 'pending'
+    };
+
+    // Categoría por defecto basada en el nombre del proyecto
+    const category: 'investigacion' | 'desarrollo' | 'analisis' = 
+      apiProject.name.toLowerCase().includes('investiga') ? 'investigacion' :
+      apiProject.name.toLowerCase().includes('desarroll') ? 'desarrollo' :
+      'analisis';
+
+    return {
+      id: apiProject.id.toString(),
+      name: apiProject.name,
+      description: apiProject.description,
+      status: statusMap[apiProject.statusId] || 'active',
+      participants: 0, // No disponible en el API
+      deadline: new Date(apiProject.createdAt).toISOString().split('T')[0],
+      category,
+      teamId: apiProject.courseId.toString(),
+      deliveries: []
+    };
+  };
+
+  // Cargar proyectos del estudiante
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Por ahora usamos el ID 1 de forma hardcoded
+        // TODO: Obtener el studentId real del usuario autenticado
+        const studentId = 1;
+        
+        const response = await apiService.getProjectsByStudent(studentId);
+        
+        if (response.error) {
+          setError(response.error);
+          // Si hay error, usar los datos mock
+          setProjects(mockProjects);
+        } else if (response.data) {
+          const transformedProjects = response.data.map(transformProject);
+          setProjects(transformedProjects);
+        }
+      } catch (err) {
+        console.error('Error loading projects:', err);
+        setError('Error al cargar los proyectos');
+        // Si hay error, usar los datos mock
+        setProjects(mockProjects);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [user]);
+
+  // Función para cerrar sesión
+  const handleLogout = async () => {
+    await logout();
+    onLogout();
+  };
+
+  // Autorización por roles
   const hasProjectAccess = (projectId: string): boolean => {
     if (!user) return false;
     
-    // Lógica temporal basada en roles:
-    // ROLE_STUDENT: Solo proyecto-a
-    // ROLE_TEACHER: proyecto-a y proyecto-b  
-    // Admin (ambos roles): todos los proyectos
-    
-    const isAdmin = hasRole('ROLE_STUDENT') && hasRole('ROLE_TEACHER');
-    const isStudent = hasRole('ROLE_STUDENT') && !hasRole('ROLE_TEACHER');
-    const isTeacher = hasRole('ROLE_TEACHER') && !hasRole('ROLE_STUDENT');
-    
+    // Admin y profesor tienen acceso a todos los proyectos
+    const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
     if (isAdmin) return true;
-    if (isStudent) return projectId === 'proyecto-a';
-    if (isTeacher) return ['proyecto-a', 'proyecto-b'].includes(projectId);
     
-    return false;
+    // Los estudiantes tienen acceso a los proyectos que vienen del API
+    // (el API ya filtra por studentId)
+    return hasRole('ROLE_STUDENT');
   };
+
+  // Filter projects based on user role
+  const visibleProjects = projects.filter(project => {
+    const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
+    if (isAdmin) {
+      return true; // Admin sees all projects (read-only)
+    }
+    return hasProjectAccess(project.id);
+  });
 
   const handleProjectClick = (project: Project) => {
     const hasAccess = hasProjectAccess(project.id);
+    const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
     
-    logAccessAttempt(project.id, hasAccess);
+    logAccessAttempt(project.id, hasAccess || isAdmin);
     
-    if (hasAccess) {
+    if (hasAccess || isAdmin) {
       setAccessError('');
       onProjectSelect(project.id);
     } else {
@@ -114,14 +189,18 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      onLogout();
-    } catch (error) {
-      console.error('Error durante el logout:', error);
-      onLogout();
-    }
+  const getRoleBadgeText = () => {
+    if (hasRole('ROLE_ADMIN')) return 'Administrador';
+    if (hasRole('ROLE_TEACHER')) return 'Profesor';
+    if (hasRole('ROLE_STUDENT')) return 'Estudiante';
+    return 'Usuario';
+  };
+
+  const getRoleDescription = () => {
+    if (hasRole('ROLE_ADMIN')) return 'Vista general de todos los proyectos y gestión de usuarios';
+    if (hasRole('ROLE_TEACHER')) return 'Puedes enviar retroalimentación y generar reportes de equipo';
+    if (hasRole('ROLE_STUDENT')) return 'Puedes ver tus proyectos asignados y recibir retroalimentación';
+    return '';
   };
 
   const getStatusColor = (status: Project['status']) => {
@@ -152,7 +231,7 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
   };
 
   const getAuthorizedProjectsCount = () => {
-    return mockProjects.filter(project => hasProjectAccess(project.id)).length;
+    return projects.filter(project => hasProjectAccess(project.id)).length;
   };
 
   if (!user) {
@@ -248,13 +327,35 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="animate-slide-up">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Bienvenido, {user.username}
-            </h2>
-            <p className="text-muted-foreground">
-              Tienes acceso a {getAuthorizedProjectsCount()} proyecto(s) según tus roles asignados.
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Bienvenido, {user?.username}
+                </h2>
+                <p className="text-muted-foreground mb-2">
+                  {getRoleDescription()}
+                </p>
+              </div>
+              <Badge variant="outline" className="text-sm">
+                {getRoleBadgeText()}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER')
+                ? `Visualizando ${visibleProjects.length} proyecto(s) del sistema`
+                : `Tienes acceso a ${visibleProjects.length} proyecto(s)`
+              }
             </p>
           </div>
+
+          {/* Error de conexión con el API */}
+          {error && (
+            <Alert className="mb-6 border-warning/50 bg-warning/5">
+              <AlertDescription className="text-warning-foreground font-medium">
+                {error}. Mostrando datos de ejemplo.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {accessError && (
             <Alert className="mb-6 border-destructive/50 bg-destructive/5">
@@ -265,15 +366,23 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
             </Alert>
           )}
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mockProjects.map((project, index) => {
+          {/* Vista de carga */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground">Cargando proyectos...</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {visibleProjects.map((project, index) => {
               const hasAccess = hasProjectAccess(project.id);
+              const isAdmin = hasRole('ROLE_ADMIN') || hasRole('ROLE_TEACHER');
               
               return (
                 <Card 
                   key={project.id}
                   className={`cursor-pointer transition-bounce hover:shadow-elevated border-0 gradient-card animate-scale-in ${
-                    hasAccess 
+                    hasAccess || isAdmin
                       ? 'hover:scale-105' 
                       : 'opacity-60 hover:opacity-80'
                   }`}
@@ -288,7 +397,9 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                           {project.name}
                         </CardTitle>
                       </div>
-                      {hasAccess ? (
+                      {isAdmin ? (
+                        <Badge variant="outline" className="text-xs">Admin</Badge>
+                      ) : hasAccess ? (
                         <ShieldCheck className="w-5 h-5 text-accent flex-shrink-0" />
                       ) : (
                         <ShieldX className="w-5 h-5 text-muted-foreground flex-shrink-0" />
@@ -299,7 +410,11 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                       <Badge className={getStatusColor(project.status)}>
                         {getStatusText(project.status)}
                       </Badge>
-                      {hasAccess && (
+                      {isAdmin ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Solo lectura
+                        </Badge>
+                      ) : hasAccess && (
                         <Badge variant="outline" className="text-xs">
                           Acceso autorizado
                         </Badge>
@@ -325,9 +440,11 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                       </div>
                     </div>
                     
-                    {hasAccess && (
+                    {(hasAccess || isAdmin) && (
                       <div className="flex items-center justify-between pt-2">
-                        <span className="text-sm text-accent font-medium">Acceder al proyecto</span>
+                        <span className="text-sm text-accent font-medium">
+                          {isAdmin ? 'Ver proyecto' : 'Acceder al proyecto'}
+                        </span>
                         <ChevronRight className="w-4 h-4 text-accent" />
                       </div>
                     )}
@@ -335,10 +452,11 @@ export const Dashboard = ({ onProjectSelect, onLogout }: DashboardProps) => {
                 </Card>
               );
             })}
-          </div>
+            </div>
+          )}
 
           {/* Estado vacío si no hay proyectos autorizados */}
-          {getAuthorizedProjectsCount() === 0 && (
+          {!loading && getAuthorizedProjectsCount() === 0 && (
             <div className="text-center py-12">
               <ShieldX className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">Sin proyectos autorizados</h3>

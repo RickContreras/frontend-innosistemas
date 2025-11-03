@@ -1,4 +1,28 @@
-# Welcome to your Lovable project
+# 🎓 InnoSistemas - Plataforma de Gestión Académica
+
+Sistema web moderno para la gestión de proyectos académicos, retroalimentación y generación de reportes.
+
+## 🏗️ Arquitectura
+
+Este proyecto implementa una **arquitectura de microservicios**, consumiendo múltiples servicios backend independientes:
+
+- **Servicio de Autenticación**: Gestión de usuarios, roles y permisos
+- **Servicio de Proyectos**: Gestión de proyectos académicos y asignaciones
+
+📖 Ver documentación completa: [MICROSERVICES_ARCHITECTURE.md](./MICROSERVICES_ARCHITECTURE.md)
+
+## ✨ Características
+
+- 🔐 **Autenticación JWT** con roles y permisos
+- 📊 **Dashboard dinámico** que carga proyectos desde microservicio
+- 👥 **Gestión de usuarios** (solo administradores)
+- 📁 **Sistema de proyectos** con filtrado por rol
+- 🎨 **UI moderna** con tema claro/oscuro
+- 📱 **Diseño responsive** adaptado a móviles
+- 🔄 **Actualización en tiempo real** de datos
+- 📝 **Sistema de logging** configurable
+- ⚡ **Fallback automático** ante errores de servicios
+- 🛡️ **Control de acceso** basado en roles (RBAC)
 
 ## Project info
 
@@ -50,15 +74,35 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## 🔧 Configuración Inicial
+
+### Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto (puedes copiar `.env.example`):
+
+```bash
+# Microservicios
+VITE_AUTH_SERVICE_URL=https://obscure-guacamole-6x7r4w6gv6v39rr-8080.app.github.dev
+VITE_PROJECTS_SERVICE_URL=https://didactic-space-zebra-q5g9p6rqvgv29q4r-8080.app.github.dev
+
+# Configuración
+VITE_LOG_LEVEL=debug
+VITE_ENABLE_DEVTOOLS=true
+```
+
+📖 Ver todas las variables: [ENV_DOCS.md](./ENV_DOCS.md)
+
 ## What technologies are used for this project?
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Build tool y dev server
+- **TypeScript** - Type safety
+- **React 18** - UI framework
+- **shadcn/ui** - Component library
+- **Tailwind CSS** - Styling
+- **Lucide React** - Icons
+- **Microservices Architecture** - Backend integration
 
 ## How can I deploy this project?
 
