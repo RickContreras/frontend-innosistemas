@@ -85,9 +85,9 @@ interface FeedbackWithResponses {
 5. **`createResponse(feedbackId, content, authorId, userRole)`**
    - Crea una respuesta a un feedback
    - Método: `POST`
-   - Endpoint: `/api/v1/response`
+   - Endpoint: `/api/v1/feedback/{feedbackId}/responses`
    - Headers: `X-User-Id`, `X-User-Role` (PROFESSOR/STUDENT/ADMIN)
-   - Body: `{ feedbackId, content }`
+   - Body: `{ content }`
 
 6. **`updateResponse(responseId, content)`**
    - Actualiza una respuesta existente

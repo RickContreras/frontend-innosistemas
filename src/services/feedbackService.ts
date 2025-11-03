@@ -186,13 +186,10 @@ export const feedbackService = {
    */
   async createResponse(feedbackId: number, content: string, authorId: number, userRole: string = 'STUDENT'): Promise<FeedbackResponse> {
     try {
-      const url = `${FEEDBACK_SERVICE_URL}/api/v1/response`;
-      const payload = {
-        feedbackId: Number(feedbackId),
-        content
-      };
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/feedback/${feedbackId}/responses`;
+      const payload = { content };
 
-      console.log('💬 [FeedbackService] Creating response:', { url, payload, authorId, userRole });
+      console.log('💬 [FeedbackService] Creating response:', { url, feedbackId, payload, authorId, userRole });
 
       const response = await fetch(url, {
         method: 'POST',
