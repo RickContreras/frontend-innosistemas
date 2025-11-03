@@ -5,6 +5,12 @@
 
 const FEEDBACK_SERVICE_URL = import.meta.env.VITE_FEEDBACK_SERVICE_URL;
 
+// Log de configuración
+console.log('🔧 [FeedbackService] Configuración:', {
+  FEEDBACK_SERVICE_URL,
+  env: import.meta.env.VITE_FEEDBACK_SERVICE_URL
+});
+
 export interface FeedbackResponse {
   id: number;
   content: string;
@@ -40,23 +46,29 @@ export const feedbackService = {
    */
   async getFeedbacksWithResponses(deliveryId: number | string): Promise<FeedbackWithResponses[]> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/deliveries/${deliveryId}/feedbacks-with-responses`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': '*/*',
-          },
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/deliveries/${deliveryId}/feedbacks-with-responses`;
+      console.log('🔍 [FeedbackService] Fetching feedbacks from:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': '*/*',
+        },
+      });
+
+      console.log('📡 [FeedbackService] Response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ [FeedbackService] Feedbacks received:', data);
+      console.log('📊 [FeedbackService] Number of feedbacks:', data.length);
+      
+      return data;
     } catch (error) {
-      console.error('Error fetching feedbacks:', error);
+      console.error('❌ [FeedbackService] Error fetching feedbacks:', error);
       throw error;
     }
   },

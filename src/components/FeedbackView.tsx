@@ -30,10 +30,14 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
 
   const loadFeedbacks = useCallback(async () => {
     try {
+      console.log('🔄 [FeedbackView] Loading feedbacks for delivery:', deliveryId);
       setIsLoading(true);
       const data = await feedbackService.getFeedbacksWithResponses(deliveryId);
+      console.log('✅ [FeedbackView] Feedbacks loaded:', data);
+      console.log('📊 [FeedbackView] Setting feedbacks state with', data.length, 'items');
       setFeedbacks(data);
     } catch (error) {
+      console.error('❌ [FeedbackView] Error loading feedbacks:', error);
       toast({
         title: 'Error',
         description: 'No se pudo cargar la retroalimentación',
@@ -236,6 +240,15 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
   const canReply = isStudent || isProfessor;
   const isReadOnly = isAdmin;
 
+  console.log('🎨 [FeedbackView] Rendering with:', {
+    feedbacksCount: feedbacks.length,
+    isLoading,
+    deliveryId,
+    isProfessor,
+    isStudent,
+    isAdmin
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="bg-card/80 backdrop-blur-sm border-b border-border shadow-card">
@@ -353,7 +366,11 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
               </AlertDescription>
             </Alert>
           ) : (
-            feedbacks.map((item) => (
+            <>
+              {console.log('🎯 [FeedbackView] Rendering feedbacks:', feedbacks)}
+              {feedbacks.map((item) => {
+                console.log('📝 [FeedbackView] Rendering feedback item:', item);
+                return (
               <Card key={item.feedback.id} className="border-0 gradient-card">
                 <CardContent className="pt-6">
                   {/* Feedback */}
@@ -502,7 +519,9 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                   )}
                 </CardContent>
               </Card>
-            ))
+              );
+            })}
+            </>
           )}
         </div>
       </main>
