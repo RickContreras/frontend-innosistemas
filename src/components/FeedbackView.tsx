@@ -94,13 +94,29 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
     setIsSending(true);
 
     try {
-      // TODO: Usar un ID numérico real del usuario cuando esté disponible en el backend
-      // Por ahora usamos un hash del username como ID temporal
+      // Generar un ID temporal basado en el username (consistente)
       const tempUserId = Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+      
+      // Determinar el rol del usuario para el header
+      let userRole = 'STUDENT'; // Por defecto
+      if (hasRole('ROLE_TEACHER')) {
+        userRole = 'PROFESSOR';
+      } else if (hasRole('ROLE_ADMIN')) {
+        userRole = 'ADMIN';
+      }
+
+      console.log('📤 [FeedbackView] Sending feedback:', { 
+        deliveryId, 
+        tempUserId, 
+        userRole,
+        username: user.username 
+      });
+
       await feedbackService.createFeedback(
         deliveryId,
         newComment,
-        tempUserId
+        tempUserId,
+        userRole
       );
 
       setNewComment('');
@@ -111,6 +127,7 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
         description: 'Retroalimentación enviada correctamente',
       });
     } catch (error) {
+      console.error('❌ [FeedbackView] Error sending feedback:', error);
       toast({
         title: 'Error',
         description: 'No se pudo enviar la retroalimentación',
@@ -126,12 +143,29 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
     if (!text?.trim() || !user) return;
 
     try {
-      // TODO: Usar un ID numérico real del usuario cuando esté disponible en el backend
+      // Generar un ID temporal basado en el username (consistente)
       const tempUserId = Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+      
+      // Determinar el rol del usuario para el header
+      let userRole = 'STUDENT'; // Por defecto
+      if (hasRole('ROLE_TEACHER')) {
+        userRole = 'PROFESSOR';
+      } else if (hasRole('ROLE_ADMIN')) {
+        userRole = 'ADMIN';
+      }
+
+      console.log('💬 [FeedbackView] Sending response:', { 
+        feedbackId, 
+        tempUserId, 
+        userRole,
+        username: user.username 
+      });
+
       await feedbackService.createResponse(
         feedbackId,
         text,
-        tempUserId
+        tempUserId,
+        userRole
       );
 
       setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
@@ -142,6 +176,7 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
         description: 'Tu respuesta ha sido publicada',
       });
     } catch (error) {
+      console.error('❌ [FeedbackView] Error sending response:', error);
       toast({
         title: 'Error',
         description: 'No se pudo enviar la respuesta',

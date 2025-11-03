@@ -62,37 +62,43 @@ interface FeedbackWithResponses {
    - Método: `GET`
    - Endpoint: `/api/v1/deliveries/{deliveryId}/feedbacks-with-responses`
 
-2. **`createFeedback(deliveryId, content, authorId)`**
+2. **`createFeedback(deliveryId, content, authorId, userRole)`**
    - Crea un nuevo feedback
    - Método: `POST`
-   - Endpoint: `/api/v1/deliveries/{deliveryId}/feedbacks`
+   - Endpoint: `/api/v1/feedback`
+   - Headers: `X-User-Id`, `X-User-Role` (PROFESSOR/STUDENT/ADMIN)
+   - Body: `{ deliveryId, content }`
 
 3. **`updateFeedback(feedbackId, content)`**
    - Actualiza un feedback existente
    - Método: `PUT`
-   - Endpoint: `/api/v1/feedbacks/{feedbackId}`
+   - Endpoint: `/api/v1/feedback/{feedbackId}`
+   - Body: `{ content }`
 
 4. **`deleteFeedback(feedbackId)`**
    - Elimina un feedback
    - Método: `DELETE`
-   - Endpoint: `/api/v1/feedbacks/{feedbackId}`
+   - Endpoint: `/api/v1/feedback/{feedbackId}`
 
 ##### **Respuestas (Comentarios de Estudiantes)**
 
-5. **`createResponse(feedbackId, content, authorId)`**
+5. **`createResponse(feedbackId, content, authorId, userRole)`**
    - Crea una respuesta a un feedback
    - Método: `POST`
-   - Endpoint: `/api/v1/feedbacks/{feedbackId}/responses`
+   - Endpoint: `/api/v1/response`
+   - Headers: `X-User-Id`, `X-User-Role` (PROFESSOR/STUDENT/ADMIN)
+   - Body: `{ feedbackId, content }`
 
 6. **`updateResponse(responseId, content)`**
    - Actualiza una respuesta existente
    - Método: `PUT`
-   - Endpoint: `/api/v1/responses/{responseId}`
+   - Endpoint: `/api/v1/response/{responseId}`
+   - Body: `{ content }`
 
 7. **`deleteResponse(responseId)`**
    - Elimina una respuesta
    - Método: `DELETE`
-   - Endpoint: `/api/v1/responses/{responseId}`
+   - Endpoint: `/api/v1/response/{responseId}`
 
 ### 3. **`src/components/FeedbackView.tsx`** - Componente Principal (MODIFICADO)
 

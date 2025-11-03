@@ -76,31 +76,40 @@ export const feedbackService = {
   /**
    * Crea un nuevo feedback para una entrega
    */
-  async createFeedback(deliveryId: number | string, content: string, authorId: number): Promise<Feedback> {
+  async createFeedback(deliveryId: number | string, content: string, authorId: number, userRole: string = 'PROFESSOR'): Promise<Feedback> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/deliveries/${deliveryId}/feedbacks`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': '*/*',
-          },
-          body: JSON.stringify({
-            content,
-            authorId,
-            deliveryId: Number(deliveryId),
-          }),
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/feedback`;
+      const payload = {
+        deliveryId: Number(deliveryId),
+        content
+      };
+
+      console.log('📝 [FeedbackService] Creating feedback:', { url, payload, authorId, userRole });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-User-Id': String(authorId),
+          'X-User-Role': userRole,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('📡 [FeedbackService] Create response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ [FeedbackService] Feedback created:', data);
+      return data;
     } catch (error) {
-      console.error('Error creating feedback:', error);
+      console.error('❌ [FeedbackService] Error creating feedback:', error);
       throw error;
     }
   },
@@ -110,27 +119,33 @@ export const feedbackService = {
    */
   async updateFeedback(feedbackId: number, content: string): Promise<Feedback> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/feedbacks/${feedbackId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': '*/*',
-          },
-          body: JSON.stringify({
-            content,
-          }),
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/feedback/${feedbackId}`;
+      const payload = { content };
+
+      console.log('✏️ [FeedbackService] Updating feedback:', { url, feedbackId, payload });
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('📡 [FeedbackService] Update response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ [FeedbackService] Feedback updated:', data);
+      return data;
     } catch (error) {
-      console.error('Error updating feedback:', error);
+      console.error('❌ [FeedbackService] Error updating feedback:', error);
       throw error;
     }
   },
@@ -140,21 +155,28 @@ export const feedbackService = {
    */
   async deleteFeedback(feedbackId: number): Promise<void> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/feedbacks/${feedbackId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Accept': '*/*',
-          },
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/feedback/${feedbackId}`;
+      
+      console.log('🗑️ [FeedbackService] Deleting feedback:', { url, feedbackId });
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      console.log('📡 [FeedbackService] Delete response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      console.log('✅ [FeedbackService] Feedback deleted successfully');
     } catch (error) {
-      console.error('Error deleting feedback:', error);
+      console.error('❌ [FeedbackService] Error deleting feedback:', error);
       throw error;
     }
   },
@@ -162,31 +184,40 @@ export const feedbackService = {
   /**
    * Crea una respuesta a un feedback
    */
-  async createResponse(feedbackId: number, content: string, authorId: number): Promise<FeedbackResponse> {
+  async createResponse(feedbackId: number, content: string, authorId: number, userRole: string = 'STUDENT'): Promise<FeedbackResponse> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/feedbacks/${feedbackId}/responses`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': '*/*',
-          },
-          body: JSON.stringify({
-            content,
-            authorId,
-            feedbackId,
-          }),
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/response`;
+      const payload = {
+        feedbackId: Number(feedbackId),
+        content
+      };
+
+      console.log('💬 [FeedbackService] Creating response:', { url, payload, authorId, userRole });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-User-Id': String(authorId),
+          'X-User-Role': userRole,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('📡 [FeedbackService] Response create status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ [FeedbackService] Response created:', data);
+      return data;
     } catch (error) {
-      console.error('Error creating response:', error);
+      console.error('❌ [FeedbackService] Error creating response:', error);
       throw error;
     }
   },
@@ -196,27 +227,33 @@ export const feedbackService = {
    */
   async updateResponse(responseId: number, content: string): Promise<FeedbackResponse> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/responses/${responseId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': '*/*',
-          },
-          body: JSON.stringify({
-            content,
-          }),
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/response/${responseId}`;
+      const payload = { content };
+
+      console.log('✏️ [FeedbackService] Updating response:', { url, responseId, payload });
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('📡 [FeedbackService] Update response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ [FeedbackService] Response updated:', data);
+      return data;
     } catch (error) {
-      console.error('Error updating response:', error);
+      console.error('❌ [FeedbackService] Error updating response:', error);
       throw error;
     }
   },
@@ -226,21 +263,28 @@ export const feedbackService = {
    */
   async deleteResponse(responseId: number): Promise<void> {
     try {
-      const response = await fetch(
-        `${FEEDBACK_SERVICE_URL}/api/v1/responses/${responseId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Accept': '*/*',
-          },
-        }
-      );
+      const url = `${FEEDBACK_SERVICE_URL}/api/v1/response/${responseId}`;
+      
+      console.log('🗑️ [FeedbackService] Deleting response:', { url, responseId });
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      console.log('📡 [FeedbackService] Delete response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [FeedbackService] Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      console.log('✅ [FeedbackService] Response deleted successfully');
     } catch (error) {
-      console.error('Error deleting response:', error);
+      console.error('❌ [FeedbackService] Error deleting response:', error);
       throw error;
     }
   },
