@@ -51,16 +51,40 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
   }, [deliveryId]);
 
   useEffect(() => {
-    console.log('🎬 [FeedbackView] useEffect triggered');
+    console.log('🎬 [FeedbackView] useEffect triggered', { projectId, deliveryId });
     const project = getProject(projectId);
     console.log('📦 [FeedbackView] Project:', project);
+    
     if (project) {
       const del = project.deliveries.find(d => d.id === deliveryId);
       console.log('📄 [FeedbackView] Delivery found:', del);
       if (del) {
         setDelivery(del);
+      } else {
+        console.warn('⚠️ [FeedbackView] Delivery not found in project, creating placeholder');
+        // Crear un delivery placeholder si no existe en los datos mock
+        setDelivery({
+          id: deliveryId,
+          projectId: projectId,
+          title: `Entrega #${deliveryId}`,
+          description: 'Entrega del proyecto',
+          dueDate: new Date().toISOString(),
+          comments: []
+        });
       }
+    } else {
+      console.warn('⚠️ [FeedbackView] Project not found, creating placeholder delivery');
+      // Si no hay proyecto, crear un delivery placeholder
+      setDelivery({
+        id: deliveryId,
+        projectId: projectId,
+        title: `Entrega #${deliveryId}`,
+        description: 'Entrega del proyecto',
+        dueDate: new Date().toISOString(),
+        comments: []
+      });
     }
+    
     loadFeedbacks();
   }, [projectId, deliveryId, loadFeedbacks]);
 
@@ -229,7 +253,7 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
 
   console.log('🔍 [FeedbackView] Render check:', { delivery: !!delivery, isLoading, feedbacksCount: feedbacks.length });
 
-  // Mostrar loading solo si no hay delivery Y estamos cargando
+  // Mostrar loading solo mientras se carga el contenido inicial
   if (isLoading && !delivery) {
     console.log('⏳ [FeedbackView] Showing loading state');
     return (
@@ -242,19 +266,15 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
     );
   }
 
-  // Si no hay delivery después de cargar, mostrar error
-  if (!delivery) {
-    console.log('❌ [FeedbackView] No delivery found');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertDescription>
-            No se encontró la entrega solicitada.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // Si no hay delivery (no debería pasar con el placeholder), usar valores por defecto
+  const displayDelivery = delivery || {
+    id: deliveryId,
+    projectId: projectId,
+    title: `Entrega #${deliveryId}`,
+    description: 'Cargando información de la entrega...',
+    dueDate: new Date().toISOString(),
+    comments: []
+  };
 
   const isProfessor = hasRole('ROLE_TEACHER');
   const isStudent = hasRole('ROLE_STUDENT');
@@ -280,15 +300,15 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-2xl font-bold text-foreground">{delivery.title}</h1>
-          <p className="text-muted-foreground">{delivery.description}</p>
+          <h1 className="text-2xl font-bold text-foreground">{displayDelivery.title}</h1>
+          <p className="text-muted-foreground">{displayDelivery.description}</p>
           <div className="flex gap-2 mt-2">
             <Badge variant="outline">
-              Entrega: {new Date(delivery.dueDate).toLocaleDateString('es-ES')}
+              Entrega: {new Date(displayDelivery.dueDate).toLocaleDateString('es-ES')}
             </Badge>
-            {delivery.grade && (
+            {displayDelivery.grade && (
               <Badge className="bg-accent text-accent-foreground">
-                Calificación: {delivery.grade}/100
+                Calificación: {displayDelivery.grade}/100
               </Badge>
             )}
           </div>
