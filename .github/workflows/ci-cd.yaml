@@ -2,14 +2,14 @@ name: InnoSistemas - Retroalimentacion y evaluacion
 on: [push]
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  VERCEL_ORG_ID: ${{ secrets.VERGEL_ORG_ID }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
   build:
     name: Build and Deploy
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v3
       - name: use Node.js 22
@@ -25,7 +25,7 @@ jobs:
     name: Deploy to Vercel (Development)
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v3
       - name: use Node.js 22
@@ -56,3 +56,4 @@ jobs:
         run: vercel pull --yes --token=${{ secrets.VERCEL_TOKEN }}
       - name: Trigger Vercel Deployment
         run: vercel deploy --prod --no-wait --token=${{ secrets.VERCEL_TOKEN }}
+
