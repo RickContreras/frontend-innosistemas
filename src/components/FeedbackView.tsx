@@ -6,11 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Send, MessageSquare, Edit2, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRealtime } from '@/hooks/useRealtime';
-import { getProject, updateProject } from '@/utils/mockData';
-import { Comment, Reply, Delivery, DeliveryFromAPI } from '@/types';
+import { getProject } from '@/utils/mockData';
+import { Delivery } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { apiService } from '@/services/api';
+import { feedbackService, FeedbackWithResponses } from '@/services/feedbackService';
 
 interface FeedbackViewProps {
   projectId: string;
@@ -21,278 +20,211 @@ interface FeedbackViewProps {
 export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProps) => {
   const { user, hasRole } = useAuth();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [feedbacks, setFeedbacks] = useState<FeedbackWithResponses[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
-  const [editingReply, setEditingReply] = useState<{ commentId: string; replyId: string } | null>(null);
+  const [replyText, setReplyText] = useState<{ [key: number]: string }>({});
+  const [editingReply, setEditingReply] = useState<{ feedbackId: number; responseId: number } | null>(null);
+  const [editingFeedback, setEditingFeedback] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [simulateError, setSimulateError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Transform API delivery to frontend format
-  const transformDelivery = (apiDelivery: DeliveryFromAPI): Delivery => {
-    // Get locally stored comments from localStorage
-    const localCommentsKey = `delivery-comments-${apiDelivery.id}`;
-    const storedComments = localStorage.getItem(localCommentsKey);
-    const comments: Comment[] = storedComments ? JSON.parse(storedComments) : [];
-
-    return {
-      id: apiDelivery.id.toString(),
-      projectId: apiDelivery.project_id.toString(),
-      title: apiDelivery.title,
-      description: apiDelivery.description,
-      dueDate: apiDelivery.created_at,
-      comments: comments
-    };
-  };
-
-  const loadDelivery = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+  const loadFeedbacks = useCallback(async () => {
     try {
-      // Try to load from API
-      console.log(`[FeedbackView] Loading delivery ${deliveryId} from API`);
-      const response = await apiService.getDeliveryById(parseInt(deliveryId));
-
-      if (response.data) {
-        const transformedDelivery = transformDelivery(response.data);
-        setDelivery(transformedDelivery);
-        console.log('[FeedbackView] Delivery loaded successfully from API:', transformedDelivery);
-      } else {
-        throw new Error(response.error || 'Failed to load delivery');
-      }
-    } catch (err) {
-      // Fallback to mock data
-      console.warn('[FeedbackView] Error loading from API, using mock data:', err);
-      const project = getProject(projectId);
-      if (project) {
-        const del = project.deliveries.find(d => d.id === deliveryId);
-        if (del) {
-          setDelivery(del);
-          setError('Usando datos locales - el servidor no está disponible');
-        } else {
-          setError('No se pudo cargar la entrega');
-        }
-      }
+      setIsLoading(true);
+      const data = await feedbackService.getFeedbacksWithResponses(deliveryId);
+      setFeedbacks(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar la retroalimentación',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [projectId, deliveryId]);
+  }, [deliveryId]);
 
   useEffect(() => {
-    loadDelivery();
-  }, [loadDelivery]);
-
-  const handleRealtimeMessage = useCallback((message: any) => {
-    if (message.type === 'comment' || message.type === 'reply') {
-      loadDelivery();
-      toast({
-        title: 'Nuevo mensaje',
-        description: message.type === 'comment' ? 'Nueva retroalimentación recibida' : 'Nueva respuesta recibida',
-      });
+    const project = getProject(projectId);
+    if (project) {
+      const del = project.deliveries.find(d => d.id === deliveryId);
+      if (del) {
+        setDelivery(del);
+      }
     }
-  }, [loadDelivery]);
-
-  const { broadcast } = useRealtime(`feedback-${deliveryId}`, handleRealtimeMessage);
+    loadFeedbacks();
+  }, [projectId, deliveryId, loadFeedbacks]);
 
   const handleSendComment = async () => {
     if (!newComment.trim() || !user || !delivery) return;
 
-    if (simulateError) {
+    setIsSending(true);
+
+    try {
+      // TODO: Usar un ID numérico real del usuario cuando esté disponible en el backend
+      // Por ahora usamos un hash del username como ID temporal
+      const tempUserId = Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+      await feedbackService.createFeedback(
+        deliveryId,
+        newComment,
+        tempUserId
+      );
+
+      setNewComment('');
+      await loadFeedbacks();
+
+      toast({
+        title: 'Éxito',
+        description: 'Retroalimentación enviada correctamente',
+      });
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo enviar la retroalimentación, inténtalo de nuevo',
+        description: 'No se pudo enviar la retroalimentación',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setIsSending(false);
     }
+  };
+
+  const handleSendReply = async (feedbackId: number) => {
+    const text = replyText[feedbackId];
+    if (!text?.trim() || !user) return;
+
+    try {
+      // TODO: Usar un ID numérico real del usuario cuando esté disponible en el backend
+      const tempUserId = Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+      await feedbackService.createResponse(
+        feedbackId,
+        text,
+        tempUserId
+      );
+
+      setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
+      await loadFeedbacks();
+
+      toast({
+        title: 'Respuesta enviada',
+        description: 'Tu respuesta ha sido publicada',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo enviar la respuesta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditReply = (feedbackId: number, responseId: number, currentContent: string) => {
+    setReplyText(prev => ({ ...prev, [feedbackId]: currentContent }));
+    setEditingReply({ feedbackId, responseId });
+  };
+
+  const handleUpdateReply = async (feedbackId: number, responseId: number) => {
+    const text = replyText[feedbackId];
+    if (!text?.trim()) return;
+
+    try {
+      await feedbackService.updateResponse(responseId, text);
+
+      setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
+      setEditingReply(null);
+      await loadFeedbacks();
+
+      toast({
+        title: 'Respuesta actualizada',
+        description: 'Los cambios se han guardado',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la respuesta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteReply = async (responseId: number) => {
+    if (!confirm('¿Estás seguro de eliminar esta respuesta?')) return;
+
+    try {
+      await feedbackService.deleteResponse(responseId);
+      await loadFeedbacks();
+
+      toast({
+        title: 'Respuesta eliminada',
+        description: 'La respuesta ha sido eliminada',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la respuesta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditFeedback = (feedbackId: number, currentContent: string) => {
+    setNewComment(currentContent);
+    setEditingFeedback(feedbackId);
+  };
+
+  const handleUpdateFeedback = async (feedbackId: number) => {
+    if (!newComment.trim()) return;
 
     setIsSending(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      await feedbackService.updateFeedback(feedbackId, newComment);
 
-    const comment: Comment = {
-      id: `c-${Date.now()}`,
-      // TODO: Future implementation - use user.id when available
-      // authorId: user.id,
-      authorId: user.username,
-      // TODO: Future implementation - use user.name when available
-      // authorName: user.name,
-      authorName: user.email || user.username,
-      body: newComment,
-      timestamp: new Date().toISOString(),
-      replies: [],
-      isNew: true
-    };
+      setNewComment('');
+      setEditingFeedback(null);
+      await loadFeedbacks();
 
-    const project = getProject(projectId);
-    if (project) {
-      const deliveryIndex = project.deliveries.findIndex(d => d.id === deliveryId);
-      if (deliveryIndex !== -1) {
-        project.deliveries[deliveryIndex].comments.push(comment);
-        updateProject(project);
-        
-        broadcast({
-          type: 'comment',
-          data: comment,
-          timestamp: new Date().toISOString()
-        });
-
-        setNewComment('');
-        loadDelivery();
-        
-        toast({
-          title: 'Éxito',
-          description: 'Retroalimentación enviada correctamente',
-        });
-      }
-    }
-
-    setIsSending(false);
-  };
-
-  const handleSendReply = async (commentId: string) => {
-    const text = replyText[commentId];
-    if (!text?.trim() || !user || !delivery) return;
-
-    const reply: Reply = {
-      id: `r-${Date.now()}`,
-      // TODO: Future implementation - use user.id when available
-      // authorId: user.id,
-      authorId: user.username,
-      // TODO: Future implementation - use user.name when available
-      // authorName: user.name,
-      authorName: user.email || user.username,
-      body: text,
-      timestamp: new Date().toISOString()
-    };
-
-    const project = getProject(projectId);
-    if (project) {
-      const deliveryIndex = project.deliveries.findIndex(d => d.id === deliveryId);
-      if (deliveryIndex !== -1) {
-        const commentIndex = project.deliveries[deliveryIndex].comments.findIndex(c => c.id === commentId);
-        if (commentIndex !== -1) {
-          project.deliveries[deliveryIndex].comments[commentIndex].replies.push(reply);
-          updateProject(project);
-          
-          broadcast({
-            type: 'reply',
-            data: { commentId, reply },
-            timestamp: new Date().toISOString()
-          });
-
-          setReplyText(prev => ({ ...prev, [commentId]: '' }));
-          loadDelivery();
-          
-          toast({
-            title: 'Respuesta enviada',
-            description: 'Tu respuesta ha sido publicada',
-          });
-        }
-      }
+      toast({
+        title: 'Retroalimentación actualizada',
+        description: 'Los cambios se han guardado',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la retroalimentación',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleEditReply = (commentId: string, replyId: string) => {
-    const comment = delivery?.comments.find(c => c.id === commentId);
-    const reply = comment?.replies.find(r => r.id === replyId);
-    if (reply) {
-      setReplyText(prev => ({ ...prev, [commentId]: reply.body }));
-      setEditingReply({ commentId, replyId });
+  const handleDeleteFeedback = async (feedbackId: number) => {
+    if (!confirm('¿Estás seguro de eliminar esta retroalimentación?')) return;
+
+    try {
+      await feedbackService.deleteFeedback(feedbackId);
+      await loadFeedbacks();
+
+      toast({
+        title: 'Retroalimentación eliminada',
+        description: 'La retroalimentación ha sido eliminada',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la retroalimentación',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleUpdateReply = async (commentId: string, replyId: string) => {
-    const text = replyText[commentId];
-    if (!text?.trim() || !user || !delivery) return;
-
-    const project = getProject(projectId);
-    if (project) {
-      const deliveryIndex = project.deliveries.findIndex(d => d.id === deliveryId);
-      if (deliveryIndex !== -1) {
-        const commentIndex = project.deliveries[deliveryIndex].comments.findIndex(c => c.id === commentId);
-        if (commentIndex !== -1) {
-          const replyIndex = project.deliveries[deliveryIndex].comments[commentIndex].replies.findIndex(r => r.id === replyId);
-          if (replyIndex !== -1) {
-            project.deliveries[deliveryIndex].comments[commentIndex].replies[replyIndex] = {
-              ...project.deliveries[deliveryIndex].comments[commentIndex].replies[replyIndex],
-              body: text,
-              editedAt: new Date().toISOString()
-            };
-            updateProject(project);
-            
-            broadcast({
-              type: 'reply',
-              data: { commentId, replyId, updated: true },
-              timestamp: new Date().toISOString()
-            });
-
-            setReplyText(prev => ({ ...prev, [commentId]: '' }));
-            setEditingReply(null);
-            loadDelivery();
-            
-            toast({
-              title: 'Respuesta actualizada',
-              description: 'Los cambios se han guardado',
-            });
-          }
-        }
-      }
-    }
-  };
-
-  const handleDeleteReply = (commentId: string, replyId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta respuesta?')) return;
-
-    const project = getProject(projectId);
-    if (project) {
-      const deliveryIndex = project.deliveries.findIndex(d => d.id === deliveryId);
-      if (deliveryIndex !== -1) {
-        const commentIndex = project.deliveries[deliveryIndex].comments.findIndex(c => c.id === commentId);
-        if (commentIndex !== -1) {
-          project.deliveries[deliveryIndex].comments[commentIndex].replies = 
-            project.deliveries[deliveryIndex].comments[commentIndex].replies.filter(r => r.id !== replyId);
-          updateProject(project);
-          
-          broadcast({
-            type: 'reply',
-            data: { commentId, replyId, deleted: true },
-            timestamp: new Date().toISOString()
-          });
-
-          loadDelivery();
-          
-          toast({
-            title: 'Respuesta eliminada',
-            description: 'La respuesta ha sido eliminada',
-          });
-        }
-      }
-    }
-  };
-
-  if (loading) {
+  if (!delivery || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-          <p className="text-muted-foreground">Cargando entrega...</p>
+          <p className="text-muted-foreground">Cargando retroalimentación...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!delivery) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertDescription>
-            {error || 'No se pudo cargar la entrega'}
-          </AlertDescription>
-        </Alert>
       </div>
     );
   }
@@ -328,15 +260,6 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Error/Fallback Alert */}
-        {error && (
-          <Alert className="mb-6 border-warning/50 bg-warning/5">
-            <AlertDescription className="text-warning font-medium">
-              ⚠️ {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
         {/* Role Badge */}
         {isReadOnly && (
           <Alert className="mb-6 border-warning/50 bg-warning/5">
@@ -352,10 +275,10 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
-                Enviar Retroalimentación
+                {editingFeedback ? 'Editar Retroalimentación' : 'Enviar Retroalimentación'}
               </CardTitle>
               <CardDescription>
-                Escribe tus comentarios para el estudiante
+                {editingFeedback ? 'Modifica tu retroalimentación' : 'Escribe tus comentarios para el estudiante'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -366,27 +289,48 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                 className="min-h-[120px]"
                 aria-label="Retroalimentación"
               />
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={simulateError}
-                    onChange={(e) => setSimulateError(e.target.checked)}
-                    className="rounded"
-                  />
-                  Simular error de red
-                </label>
+              <div className="flex items-center justify-end gap-2">
+                {editingFeedback && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setNewComment('');
+                      setEditingFeedback(null);
+                    }}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancelar
+                  </Button>
+                )}
                 <Button
-                  onClick={handleSendComment}
+                  onClick={() => {
+                    if (editingFeedback) {
+                      handleUpdateFeedback(editingFeedback);
+                    } else {
+                      handleSendComment();
+                    }
+                  }}
                   disabled={!newComment.trim() || isSending}
-                  aria-label="Enviar retroalimentación"
+                  aria-label={editingFeedback ? "Actualizar retroalimentación" : "Enviar retroalimentación"}
                 >
                   {isSending ? (
-                    <>Enviando...</>
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {editingFeedback ? 'Actualizando...' : 'Enviando...'}
+                    </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar
+                      {editingFeedback ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Actualizar
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Enviar
+                        </>
+                      )}
                     </>
                   )}
                 </Button>
@@ -399,57 +343,84 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <MessageSquare className="w-5 h-5" />
-            Retroalimentación ({delivery.comments.length})
+            Retroalimentación ({feedbacks.length})
           </h2>
 
-          {delivery.comments.length === 0 ? (
+          {feedbacks.length === 0 ? (
             <Alert>
               <AlertDescription>
                 No hay retroalimentación disponible para esta entrega.
               </AlertDescription>
             </Alert>
           ) : (
-            delivery.comments.map((comment) => (
-              <Card key={comment.id} className="border-0 gradient-card">
+            feedbacks.map((item) => (
+              <Card key={item.feedback.id} className="border-0 gradient-card">
                 <CardContent className="pt-6">
-                  {/* Comment */}
+                  {/* Feedback */}
                   <div className="mb-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{comment.authorName}</span>
-                        {comment.isNew && <Badge variant="default">Nuevo</Badge>}
+                        <span className="font-semibold text-foreground">
+                          Profesor {item.feedback.authorId}
+                        </span>
+                        {item.feedback.edited && <Badge variant="secondary">Editado</Badge>}
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {new Date(comment.timestamp).toLocaleString('es-ES')}
+                        {new Date(item.feedback.createdAt).toLocaleString('es-ES')}
                       </span>
                     </div>
-                    <p className="text-foreground">{comment.body}</p>
+                    <p className="text-foreground">{item.feedback.content}</p>
+
+                    {/* Edit/Delete buttons for own feedback */}
+                    {isProfessor && user && !isReadOnly && (
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditFeedback(item.feedback.id, item.feedback.content)}
+                          aria-label="Editar retroalimentación"
+                        >
+                          <Edit2 className="w-3 h-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteFeedback(item.feedback.id)}
+                          className="text-destructive hover:text-destructive"
+                          aria-label="Eliminar retroalimentación"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Replies */}
-                  {comment.replies.length > 0 && (
+                  {/* Responses */}
+                  {item.responses.length > 0 && (
                     <div className="ml-6 space-y-3 border-l-2 border-border pl-4">
                       <p className="text-sm font-medium text-muted-foreground">Respuestas:</p>
-                      {comment.replies.map((reply) => (
-                        <div key={reply.id} className="bg-muted/50 p-3 rounded-lg">
+                      {item.responses.map((response) => (
+                        <div key={response.id} className="bg-muted/50 p-3 rounded-lg">
                           <div className="flex items-start justify-between mb-1">
-                            <span className="text-sm font-medium text-foreground">{reply.authorName}</span>
+                            <span className="text-sm font-medium text-foreground">
+                              Usuario {response.authorId}
+                            </span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(reply.timestamp).toLocaleString('es-ES')}
-                              {reply.editedAt && ' (editado)'}
+                              {new Date(response.createdAt).toLocaleString('es-ES')}
+                              {response.edited && ' (editado)'}
                             </span>
                           </div>
-                          <p className="text-sm text-foreground">{reply.body}</p>
-                          
-                          {/* Edit/Delete buttons for own replies */}
-                          {/* TODO: Future implementation - compare with user.id when available */}
-                          {/* {user?.id === reply.authorId && ( */}
-                          {user?.username === reply.authorId && (
+                          <p className="text-sm text-foreground">{response.content}</p>
+
+                          {/* Edit/Delete buttons for own responses */}
+                          {user && (
                             <div className="flex gap-2 mt-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditReply(comment.id, reply.id)}
+                                onClick={() => handleEditReply(item.feedback.id, response.id, response.content)}
                                 aria-label="Editar respuesta"
                               >
                                 <Edit2 className="w-3 h-3 mr-1" />
@@ -458,7 +429,7 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteReply(comment.id, reply.id)}
+                                onClick={() => handleDeleteReply(response.id)}
                                 className="text-destructive hover:text-destructive"
                                 aria-label="Eliminar respuesta"
                               >
@@ -472,8 +443,8 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                     </div>
                   )}
 
-                  {/* No replies message for professors */}
-                  {isProfessor && comment.replies.length === 0 && (
+                  {/* No responses message for professors */}
+                  {isProfessor && item.responses.length === 0 && (
                     <p className="ml-6 text-sm text-muted-foreground italic">
                       Sin respuestas del estudiante
                     </p>
@@ -484,24 +455,24 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                     <div className="mt-4 ml-6">
                       <Textarea
                         placeholder="Escribe tu respuesta..."
-                        value={replyText[comment.id] || ''}
-                        onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                        value={replyText[item.feedback.id] || ''}
+                        onChange={(e) => setReplyText(prev => ({ ...prev, [item.feedback.id]: e.target.value }))}
                         className="mb-2"
                         aria-label="Respuesta al comentario"
                       />
                       <Button
                         size="sm"
                         onClick={() => {
-                          if (editingReply?.commentId === comment.id) {
-                            handleUpdateReply(comment.id, editingReply.replyId);
+                          if (editingReply?.feedbackId === item.feedback.id) {
+                            handleUpdateReply(item.feedback.id, editingReply.responseId);
                           } else {
-                            handleSendReply(comment.id);
+                            handleSendReply(item.feedback.id);
                           }
                         }}
-                        disabled={!replyText[comment.id]?.trim()}
-                        aria-label={editingReply?.commentId === comment.id ? 'Actualizar respuesta' : 'Enviar respuesta'}
+                        disabled={!replyText[item.feedback.id]?.trim()}
+                        aria-label={editingReply?.feedbackId === item.feedback.id ? 'Actualizar respuesta' : 'Enviar respuesta'}
                       >
-                        {editingReply?.commentId === comment.id ? (
+                        {editingReply?.feedbackId === item.feedback.id ? (
                           <>
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Actualizar
@@ -513,13 +484,13 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
                           </>
                         )}
                       </Button>
-                      {editingReply?.commentId === comment.id && (
+                      {editingReply?.feedbackId === item.feedback.id && (
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => {
                             setEditingReply(null);
-                            setReplyText(prev => ({ ...prev, [comment.id]: '' }));
+                            setReplyText(prev => ({ ...prev, [item.feedback.id]: '' }));
                           }}
                           className="ml-2"
                         >
