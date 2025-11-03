@@ -36,6 +36,7 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
       console.log('✅ [FeedbackView] Feedbacks loaded:', data);
       console.log('📊 [FeedbackView] Setting feedbacks state with', data.length, 'items');
       setFeedbacks(data);
+      console.log('✨ [FeedbackView] State updated, triggering re-render');
     } catch (error) {
       console.error('❌ [FeedbackView] Error loading feedbacks:', error);
       toast({
@@ -44,14 +45,18 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
         variant: 'destructive',
       });
     } finally {
+      console.log('🏁 [FeedbackView] Setting isLoading to false');
       setIsLoading(false);
     }
   }, [deliveryId]);
 
   useEffect(() => {
+    console.log('🎬 [FeedbackView] useEffect triggered');
     const project = getProject(projectId);
+    console.log('📦 [FeedbackView] Project:', project);
     if (project) {
       const del = project.deliveries.find(d => d.id === deliveryId);
+      console.log('📄 [FeedbackView] Delivery found:', del);
       if (del) {
         setDelivery(del);
       }
@@ -222,13 +227,31 @@ export const FeedbackView = ({ projectId, deliveryId, onBack }: FeedbackViewProp
     }
   };
 
-  if (!delivery || isLoading) {
+  console.log('🔍 [FeedbackView] Render check:', { delivery: !!delivery, isLoading, feedbacksCount: feedbacks.length });
+
+  // Mostrar loading solo si no hay delivery Y estamos cargando
+  if (isLoading && !delivery) {
+    console.log('⏳ [FeedbackView] Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
           <p className="text-muted-foreground">Cargando retroalimentación...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Si no hay delivery después de cargar, mostrar error
+  if (!delivery) {
+    console.log('❌ [FeedbackView] No delivery found');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>
+            No se encontró la entrega solicitada.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
