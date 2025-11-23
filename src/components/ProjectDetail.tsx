@@ -45,13 +45,14 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
     try {
       setIsGeneratingReport(true);
 
-      // Generar un ID temporal basado en el username
-      const tempUserId = Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+      // Usar el ID real del usuario si está disponible, sino generar uno temporal
+      const userId = user.id || Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
       
       console.log('📊 [ProjectDetail] Generating report:', {
         projectId: parseInt(projectId),
         projectName: project.name,
-        studentId: tempUserId
+        userId: userId,
+        userIdSource: user.id ? 'real' : 'generated'
       });
 
       toast({
@@ -63,13 +64,13 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
       const report = await reportService.generateStudentReport(
         parseInt(projectId),
         project.name,
-        tempUserId
+        userId
       );
 
       console.log('✅ [ProjectDetail] Report generated:', report);
 
       // Descargar el PDF automáticamente
-      await reportService.downloadReportPDF(report.id, tempUserId, project.name);
+      await reportService.downloadReportPDF(report.id, userId, project.name);
 
       toast({
         title: 'Reporte descargado',
