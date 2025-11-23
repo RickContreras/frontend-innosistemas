@@ -3,6 +3,7 @@ import { apiService, type LoginResponse } from '@/services/api';
 import { config, logger } from '@/config/env';
 
 export interface User {
+  id?: number;
   username: string;
   email: string;
   roles: string[];
@@ -53,6 +54,7 @@ export const useAuth = () => {
           
           // 🔍 DEBUG: Ver usuario restaurado
           console.log('✅ Sesión restaurada - usuario:', user);
+          console.log('🆔 ID de usuario:', (user as any).id || 'No disponible en la respuesta');
           console.log('✅ Roles restaurados:', user.roles);
           
           setAuthState({
@@ -113,6 +115,7 @@ export const useAuth = () => {
       // 🔍 DEBUG: Ver datos completos del login
       console.log('✅ Login exitoso - respuesta completa:', response.data);
       console.log('✅ Usuario:', user);
+      console.log('🆔 ID de usuario:', (user as any)?.id || 'No disponible en la respuesta');
       console.log('✅ Roles:', user?.roles);
       
       // Validar que user y roles existan
@@ -138,6 +141,7 @@ export const useAuth = () => {
       
       startSessionTimer(expiresInMinutes * 60 * 1000);
       console.log('✅ Usuario autenticado exitosamente:', user.username, 'con roles:', user.roles);
+      console.log('🆔 ID del usuario logueado:', (user as any)?.id || 'No disponible en la respuesta');
       
       return { success: true };
     } else {

@@ -25,6 +25,7 @@ export interface LoginResponse {
   tokenType: string;
   expiresInMinutes: number;
   user: {
+    id?: number;
     username: string;
     email: string;
     roles: string[];
