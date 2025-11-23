@@ -64,12 +64,13 @@ export const reportService = {
   /**
    * Genera un reporte estudiantil
    */
-  async generateStudentReport(projectId: number, projectName: string, studentId: number): Promise<StudentReport> {
+  async generateStudentReport(projectId: number, projectName: string, studentId: number, studentName: string): Promise<StudentReport> {
     try {
       const url = `${FEEDBACK_SERVICE_URL}/api/v1/student-reports/generate`;
       const payload = {
         projectId,
-        projectName
+        projectName,
+        studentName
       };
 
       console.log('📝 [ReportService] Generating student report:', { url, payload, studentId });

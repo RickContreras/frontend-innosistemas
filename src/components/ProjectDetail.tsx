@@ -48,10 +48,14 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
       // Usar el ID real del usuario si está disponible, sino generar uno temporal
       const userId = user.id || Math.abs(user.username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
       
+      // Construir el nombre del estudiante desde el usuario
+      const studentName = user.username || 'Estudiante';
+      
       console.log('📊 [ProjectDetail] Generating report:', {
         projectId: parseInt(projectId),
         projectName: project.name,
         userId: userId,
+        studentName: studentName,
         userIdSource: user.id ? 'real' : 'generated'
       });
 
@@ -64,7 +68,8 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
       const report = await reportService.generateStudentReport(
         parseInt(projectId),
         project.name,
-        userId
+        userId,
+        studentName
       );
 
       console.log('✅ [ProjectDetail] Report generated:', report);
