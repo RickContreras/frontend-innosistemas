@@ -55,9 +55,9 @@ export interface DeliveryFromAPI {
   id: number;
   title: string;
   description: string;
-  file_url: string;
-  created_at: string;
-  project_id: number;
+  fileUrl: string;
+  createdAt: string;
+  projectId: number;
 }
 
 export interface Project {

@@ -123,10 +123,10 @@ export const ProjectDetail = ({ projectId, onBack }: ProjectDetailProps) => {
   const transformDelivery = (apiDelivery: DeliveryFromAPI): Delivery => {
     return {
       id: apiDelivery.id.toString(),
-      projectId: apiDelivery.project_id.toString(),
+      projectId: apiDelivery.projectId.toString(),
       title: apiDelivery.title,
       description: apiDelivery.description,
-      dueDate: apiDelivery.created_at, // Usar created_at como fecha
+      dueDate: apiDelivery.createdAt, // Usar createdAt como fecha
       comments: [] // Por ahora vacío, se llenará cuando tengamos el servicio de comentarios
     };
   };
